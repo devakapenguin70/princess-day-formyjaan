@@ -413,7 +413,7 @@ room={
 setRole('boy');$('bDay').textContent='☀️';$('bWheel').textContent='🎡';
 let qi=0;const showQ=()=>{const e=$('iq');e.style.opacity=0;setTimeout(()=>{e.textContent=PQ[qi++%PQ.length];e.style.opacity=1},500)};showQ();setInterval(()=>{if(!started)showQ()},5200);
 function takenBy(r){const o=peer();return !!(o&&o.presence.role===r)}
-function pickRole(r){if(takenBy(r)){toast('Your partner is already using that character. 💞');return}pick=r;$('pB').classList.toggle('sel',r==='boy');$('pG').classList.toggle('sel',r==='girl');$('go').disabled=!(pick&&myName.trim())}
+function pickRole(r){if(takenBy(r)){toast('Your partner is already using that character. 💞');return}pick=r;if(room)room.presence({role:r,displayName:myName});$('pB').classList.toggle('sel',r==='boy');$('pG').classList.toggle('sel',r==='girl');$('go').disabled=!(pick&&myName.trim())}
 $('pB').onclick=()=>pickRole('boy');$('pG').onclick=()=>pickRole('girl');$('displayName').value=myName;
 $('displayName').addEventListener('input',e=>{myName=(e.target.value||'').trim().slice(0,18);try{localStorage.setItem('ourWorldDisplayName',myName)}catch(x){}$('go').disabled=!(pick&&myName);refreshPrincessName();if(started&&room)room.presence({displayName:myName})});
 function tryFS(){try{const r=document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen();if(r&&r.catch)r.catch(()=>{});if(screen.orientation&&screen.orientation.lock)screen.orientation.lock('landscape').catch(()=>{})}catch(e){}}
