@@ -576,7 +576,7 @@ function loop(now){requestAnimationFrame(loop);const dt=Math.min((now-last)/1000
  sky.position.copy(cam.position);sun.position.set(p.x+22,45,p.z+18);sun.target.position.copy(p);
  stL+=((busy&&busy.t==='stage'?1:0)-stL)*Math.min(1,dt*2);stSpot.intensity=stL*2.4;stBeams.forEach((b,i)=>{b.material.opacity=stL*.17*(.7+.3*Math.sin(tt*2+i*2));b.rotation.z=Math.sin(tt*.8+i)*.1*stL});
  R.render(scene,cam)}
-setInterval(()=>{$('status').textContent=owner?(peer()?'💞 Your partner is here — only you can start the surprises.':'Solo mode: only your boy avatar is visible. Invite her via Share.'):'💞 Explore the garden — something special may happen…'},1000);
+setInterval(()=>{$('status').textContent=owner?(peer()?'💞 Your partner is here — only you can start the surprises.':'Solo mode: invite your partner to join.'):'💞 Explore the garden — something special may happen…'},1000);
 requestAnimationFrame(loop);
 </script></body></html>
 <script async data-explicit-opt-in="true" data-deployment-id="dpl_FY6iMhWMZV9hoT2M3524norHALBi" src="https://vercel.live/_next-live/feedback/feedback.js"></script>
