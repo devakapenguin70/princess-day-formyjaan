@@ -354,7 +354,7 @@ let owner=true;
 const SB_URL='https://lxpngmquwpyhsvyeukid.supabase.co';
 const SB_KEY='sb_publishable_vspaMHJvc918VdTqQKcSuQ_IfI6oybS';
 const clientId=(crypto.randomUUID?crypto.randomUUID():('p'+Date.now()+Math.random().toString(36).slice(2)));
-let sb=null,sbChannel=null,localPresence={role:'boy',displayName:myName},remotePeers=[],joinedAt=Date.now(),roomReady=false;
+let sb=null,sbChannel=null,localPresence={role:null,displayName:myName},remotePeers=[],joinedAt=Date.now(),roomReady=false;
 function applyNetworkRole(){
   if(started){document.body.classList.toggle('owner',owner);document.body.classList.toggle('guest',!owner)}
   $('status').textContent=owner?'🟢 You are hosting this room.':'🟢 Connected to the shared world.';refreshPrincessName();
