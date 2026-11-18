@@ -470,7 +470,7 @@ room={
         roomReady=true;owner=false;rebuildRemotePeers();applyNetworkRole();
         room.presence({displayName:myName,role:myRole});
         await refreshRoomAuthority();
-        if(authorityTimerclearInterval(authorityTimer);
+        if(authorityTimer)clearInterval(authorityTimer);
         authorityTimer=setInterval(refreshRoomAuthority,3000);
       }else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED'){
         roomReady=false;
