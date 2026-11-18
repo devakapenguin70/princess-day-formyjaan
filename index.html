@@ -48,7 +48,7 @@ body.guest .owner-only{display:none!important}body:not(.on) #joy,body:not(.on) #
 </style></head><body>
 <div id="wrap"></div>
 <div id="title" class="pill">💞 <span id="names"></span></div><div id="status" class="pill"></div>
-<div id="bar"><button id="bPl" class="owner-only" title="Custom music">🎵</button><button id="bFire" class="owner-only" title="Fireworks">🎆</button><button id="bDay" class="owner-only" title="Change day or night">☀️</button><button id="bWheel" class="owner-only" title="Ferris wheel speed">🎡</button><button id="bSnd" title="Sound">🔊</button><button id="bFs" title="Full screen">⛶</button></div>
+<div id="bar"><button id="bPl" class="owner-only" title="Custom music">🎵</button><button id="bFire" class="owner-only" title="Fireworks">🎆</button><button id="bDay" class="owner-only" title="Change day or night">☀️</button><button id="bWheel" class="owner-only" title="Ferris wheel speed">🎡</button><button id="bShare" title="Share this exact room">🔗</button><button id="bSnd" title="Sound">🔊</button><button id="bFs" title="Full screen">⛶</button></div>
 <div id="toast"></div><button id="stop">✖ Stop</button><button id="act"></button><div id="joy"><div id="knob"></div></div>
 <div id="hint">Move: WASD / joystick · Look: drag or Q/E · Zoom: scroll · Act: Enter</div>
 <div id="card"><div><h3 id="ct"></h3><p id="cp"></p><textarea id="ci" rows="2" placeholder="Type your wish…" style="display:none"></textarea><button id="cb"></button><button id="cb2"></button></div></div>
@@ -393,14 +393,24 @@ let myRole='boy',me=boy,ot=girl,room=null,want=null,wantT=0,busy=null,fin=null,s
 function setRole(r){myRole=r;owner=r==='boy';me=myRole==='boy'?boy:girl;ot=myRole==='boy'?girl:boy;boy.visible=myRole==='boy';girl.visible=myRole==='girl';me.add(mark);if(room)room.presence({role:myRole,roleSelected:true,displayName:myName});refreshPrincessName()}
 const peer=()=>{try{return room&&room.peers().filter(p=>!p.isMe&&p.kind==='viewer'&&p.seenAt>Date.now()-5000).sort((a,b)=>b.seenAt-a.seenAt)[0]||null}catch(e){return null}};
 let owner=false;
-// Supabase Realtime multiplayer adapter. First connected client is the host;
-// the next client joins as the guest. Broadcast carries live game state while
-// Presence keeps track of connected players.
+// Supabase Realtime multiplayer adapter. Room IDs are unique per shared link.
+// The Boy remains the admin; the Girl joins as a guest. Broadcast carries live state
+// while Presence provides the connected-player roster.
 const SB_URL='https://lxpngmquwpyhsvyeukid.supabase.co';
 const SB_KEY='sb_publishable_vspaMHJvc918VdTqQKcSuQ_IfI6oybS';
 const clientId=(crypto.randomUUID?crypto.randomUUID():('p'+Date.now()+Math.random().toString(36).slice(2)));
 let sb=null,sbChannel=null,localPresence={role:null,roleSelected:false,displayName:myName},remotePeers=[],joinedAt=Date.now(),roomReady=false,positionSeq=0;
-const ROOM_ID='princess-day-castle-world';
+function makeRoomId(){try{return 'pd-'+crypto.randomUUID().replace(/-/g,'').slice(0,20)}catch(e){return 'pd-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,12)}}
+const roomUrl=new URL(location.href),requestedRoom=roomUrl.searchParams.get('room');
+const ROOM_ID=requestedRoom&&/^[a-z0-9-]{8,64}$/i.test(requestedRoom)?requestedRoom:makeRoomId();
+if(!requestedRoom||requestedRoom!==ROOM_ID){roomUrl.searchParams.set('room',ROOM_ID);history.replaceState(null,'',roomUrl.pathname+roomUrl.search+roomUrl.hash)}
+async function shareRoom(){
+ const url=new URL(location.href);url.searchParams.set('room',ROOM_ID);const link=url.href;
+ try{if(navigator.share){await navigator.share({title:'Join our little world 💞',text:'Open this link to join my exact Princess Day room:',url:link});toast('Room link shared 💞');return}}catch(e){if(e&&e.name==='AbortError')return}
+ try{if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(link);toast('Exact room link copied — send it to her 💞');return}}catch(e){}
+ const box=document.createElement('textarea');box.value=link;box.style.position='fixed';box.style.opacity='0';document.body.appendChild(box);box.select();let copied=false;try{copied=document.execCommand('copy')}catch(e){}box.remove();toast(copied?'Exact room link copied — send it to her 💞':'Copy this room link: '+link);
+}
+$('bShare').onclick=shareRoom;
 let authorityTimer=null,authorityBusy=false;
 function applyNetworkRole(){
   // Admin permissions belong to the Boy character only, never to the first
@@ -576,7 +586,7 @@ function loop(now){requestAnimationFrame(loop);const dt=Math.min((now-last)/1000
   p.y=moving?Math.abs(Math.sin(tt*10))*.1:0;walkP(me,moving?6:0);
 }
  animals(dt,p);
- if(room){ptT-=dt;if(ptT<0){ptT=.066;room.position({x:+p.x.toFixed(3),z:+p.z.toFixed(3),y:+p.y.toFixed(3),ry:+me.rotation.y.toFixed(3)})}
+ if(room){ptT-=dt;if(ptT<0){ptT=.1;room.position({x:+p.x.toFixed(3),z:+p.z.toFixed(3),y:+p.y.toFixed(3),ry:+me.rotation.y.toFixed(3)})}
    if(!owner&&o&&o.presence.fxEvent&&o.presence.fxEvent!==lastFxEvent){lastFxEvent=o.presence.fxEvent;for(let i=0;i<5;i++)burst((rnd()-.5)*38,18+rnd()*14,-28-rnd()*24,rnd()<.3)}
    if(!owner&&o&&o.presence.musicEvent&&o.presence.musicEvent!==lastRemoteMusic){lastRemoteMusic=o.presence.musicEvent;if(o.presence.musicPlaying&&o.presence.musicUrl){remoteMusicUrl=o.presence.musicUrl;playRemoteMusic(o.presence)}else{remotePlayToken++;au.pause();try{au.currentTime=0}catch(e){}au.removeAttribute('src');au.load();remoteMusicUrl='';}}
    if(!owner&&o&&typeof o.presence.dayMode==='number'&&o.presence.dayMode!==dayMode){lastRemoteDay=o.presence.dayEvent||0;setDayMode(o.presence.dayMode,false)}
