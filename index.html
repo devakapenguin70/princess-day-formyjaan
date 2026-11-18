@@ -65,8 +65,8 @@ const QUOTES=["Home is wherever you’re standing next to me.","Every flower her
 const PQ=["This little world is better with you in it. 💗","Every moment feels brighter when we share it.","Here is to our own little adventure. ✨","No grand title needed — just us, being us.","I am glad we get to make memories together. 💞","A quiet moment with you is my favourite kind of magic.","Two people, one little world, endless memories.","Let us make today another favourite memory. 🌸","Today, every little sparkle in this kingdom is for you. 👑","No crown could shine as brightly as your smile. 💗","May your day be filled with magic, laughter, and lovely surprises. ✨","Every fairytale deserves a princess — and ours has you. 🌸"];
 QUOTES.push(...PQ);
 const q=()=>QUOTES[Math.floor(rnd()*QUOTES.length)];
-const wrap=$('wrap'),R=new T.WebGLRenderer({antialias:true});
-R.setPixelRatio(Math.min(devicePixelRatio,2));R.shadowMap.enabled=true;R.shadowMap.type=T.PCFSoftShadowMap;wrap.appendChild(R.domElement);
+const wrap=$('wrap'),mobileGPU=matchMedia('(max-width: 700px), (pointer: coarse)').matches,R=new T.WebGLRenderer({antialias:!mobileGPU,powerPreference:'low-power'});
+R.setPixelRatio(Math.min(devicePixelRatio,mobileGPU?1.15:1.75));R.shadowMap.enabled=!mobileGPU;R.shadowMap.type=T.PCFSoftShadowMap;wrap.appendChild(R.domElement);
 const scene=new T.Scene(),cam=new T.PerspectiveCamera(55,1,.1,400);
 function rs(){const w=wrap.clientWidth,h=wrap.clientHeight;R.setSize(w,h);cam.aspect=w/h;cam.updateProjectionMatrix();const p=innerHeight>innerWidth&&!rs.no;$('rot').style.display=p?'flex':'none'}addEventListener('resize',rs);
 // sky + day/night
@@ -74,7 +74,7 @@ const skyU={top:{value:new T.Color()},bot:{value:new T.Color()}};
 const sky=new T.Mesh(new T.SphereGeometry(300,24,12),new T.ShaderMaterial({uniforms:skyU,side:T.BackSide,depthWrite:false,fog:false,vertexShader:'varying float h;void main(){h=normalize(position).y;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',fragmentShader:'uniform vec3 top;uniform vec3 bot;varying float h;void main(){gl_FragColor=vec4(mix(bot,top,clamp(h*1.5,0.,1.)),1.);}'}));scene.add(sky);
 scene.fog=new T.Fog(0xffe6f0,60,170);
 const hemi=new T.HemisphereLight(0xfff4ff,0x9bd880,.9),sun=new T.DirectionalLight(0xfff0dc,.95);scene.add(hemi,sun,sun.target);
-sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-34,right:34,top:34,bottom:-34,near:1,far:150});sun.shadow.bias=-.0005;
+sun.castShadow=!mobileGPU;sun.shadow.mapSize.set(mobileGPU?512:2048,mobileGPU?512:2048);Object.assign(sun.shadow.camera,{left:-34,right:34,top:34,bottom:-34,near:1,far:150});sun.shadow.bias=-.0005;
 const stars=new T.Points((()=>{const g=new T.BufferGeometry(),a=[];for(let i=0;i<500;i++){const u=rnd()*2*PI,v=Math.acos(rnd()*.9+.1);a.push(Math.cos(u)*Math.sin(v)*280,Math.cos(v)*280,Math.sin(u)*Math.sin(v)*280)}g.setAttribute('position',new T.Float32BufferAttribute(a,3));return g})(),new T.PointsMaterial({color:0xffffff,size:2,transparent:true,opacity:0,fog:false,depthWrite:false}));scene.add(stars);
 const moon=new T.Mesh(new T.SphereGeometry(9,20,16),new T.MeshBasicMaterial({color:0xfff6d0,fog:false,transparent:true,opacity:0}));moon.position.set(-90,90,-200);scene.add(moon);
 const DAY={t:new T.Color(0x4f9fe8),b:new T.Color(0xffe3ee)},NIT={t:new T.Color(0x030821),b:new T.Color(0x1c2552)};let nf=0,nt=0;
@@ -390,7 +390,7 @@ try{const o=indexedDB.open('cw-songs-custom-only',1);o.onupgradeneeded=()=>o.res
 // state
 let started=false,defRole='boy',pick=null,stL=0;
 let myRole='boy',me=boy,ot=girl,room=null,want=null,wantT=0,busy=null,fin=null,spin=0,bounce=0,near=null,ptT=0,partnerSeen=false;
-function setRole(r){myRole=r;owner=r==='boy';me=myRole==='boy'?boy:girl;ot=myRole==='boy'?girl:boy;boy.visible=myRole==='boy';girl.visible=myRole==='girl';me.add(mark);if(room)room.presence({role:myRole,displayName:myName});refreshPrincessName()}
+function setRole(r){myRole=r;owner=r==='boy';me=myRole==='boy'?boy:girl;ot=myRole==='boy'?girl:boy;boy.visible=myRole==='boy';girl.visible=myRole==='girl';me.add(mark);if(room)room.presence({role:myRole,roleSelected:true,displayName:myName});refreshPrincessName()}
 const peer=()=>{try{return room&&room.peers().find(p=>!p.isMe&&p.kind==='viewer')||null}catch(e){return null}};
 let owner=false;
 // Supabase Realtime multiplayer adapter. First connected client is the host;
@@ -399,7 +399,7 @@ let owner=false;
 const SB_URL='https://lxpngmquwpyhsvyeukid.supabase.co';
 const SB_KEY='sb_publishable_vspaMHJvc918VdTqQKcSuQ_IfI6oybS';
 const clientId=(crypto.randomUUID?crypto.randomUUID():('p'+Date.now()+Math.random().toString(36).slice(2)));
-let sb=null,sbChannel=null,localPresence={role:null,displayName:myName},remotePeers=[],joinedAt=Date.now(),roomReady=false;
+let sb=null,sbChannel=null,localPresence={role:null,roleSelected:false,displayName:myName},remotePeers=[],joinedAt=Date.now(),roomReady=false;
 const ROOM_ID='princess-day-castle-world';
 let authorityTimer=null,authorityBusy=false;
 function applyNetworkRole(){
@@ -436,7 +436,7 @@ room={
   presence(patch){
     const changed=patch||{};Object.assign(localPresence,changed);
     if(!sbChannel||!roomReady)return;
-    const persistent=['role','displayName','musicUrl','musicName','musicEvent','musicStartedAt','musicTime','musicPlaying','dayMode','dayEvent','wheelMode','wheelEvent','fxEvent','act','actStartedAt','sg','ans','answerChoice'];
+    const persistent=['role','roleSelected','displayName','musicUrl','musicName','musicEvent','musicStartedAt','musicTime','musicPlaying','dayMode','dayEvent','wheelMode','wheelEvent','fxEvent','act','actStartedAt','sg','ans','answerChoice'];
     if(Object.keys(changed).some(k=>persistent.includes(k)))sbChannel.track({...localPresence,clientId,joinedAt,owner}).catch(e=>console.warn('Presence update failed; Broadcast roster remains active:',e));
     sbChannel.send({type:'broadcast',event:'state',payload:{...localPresence,clientId,joinedAt,owner}}).catch(()=>{});
   },
@@ -461,7 +461,7 @@ room={
         try{await sbChannel.track({...localPresence,clientId,joinedAt,owner:false})}
         catch(e){console.warn('Initial Presence track failed; Broadcast roster remains active:',e)}
         roomReady=true;owner=false;rebuildRemotePeers();applyNetworkRole();
-        room.presence({displayName:myName,role:myRole});
+        room.presence({displayName:myName});
         await refreshRoomAuthority();
         if(authorityTimer)clearInterval(authorityTimer);
         authorityTimer=setInterval(refreshRoomAuthority,3000);
@@ -476,8 +476,8 @@ room={
 })();
 myRole='boy';me=boy;ot=girl;boy.visible=true;girl.visible=false;me.add(mark);$('bDay').textContent='☀️';$('bWheel').textContent='🎡';
 let qi=0;const showQ=()=>{const e=$('iq');e.style.opacity=0;setTimeout(()=>{e.textContent=PQ[qi++%PQ.length];e.style.opacity=1},500)};showQ();setInterval(()=>{if(!started)showQ()},5200);
-function takenBy(r){const o=peer();return !!(o&&o.presence.role===r)}
-function pickRole(r){if(takenBy(r)){toast('Your partner is already using that character. 💞');return}pick=r;if(room)room.presence({role:r,displayName:myName});$('pB').classList.toggle('sel',r==='boy');$('pG').classList.toggle('sel',r==='girl');$('go').disabled=!(pick&&myName.trim())}
+function takenBy(r){return remotePeers.some(p=>p&&p.seenAt>Date.now()-25000&&p.presence&&p.presence.roleSelected===true&&p.presence.role===r)}
+function pickRole(r){if(takenBy(r)){toast('Your partner is already using that character. 💞');return}pick=r;if(room)room.presence({role:r,roleSelected:true,displayName:myName});$('pB').classList.toggle('sel',r==='boy');$('pG').classList.toggle('sel',r==='girl');$('go').disabled=!(pick&&myName.trim())}
 $('pB').onclick=()=>pickRole('boy');$('pG').onclick=()=>pickRole('girl');$('displayName').value=myName;
 $('displayName').addEventListener('input',e=>{myName=(e.target.value||'').trim().slice(0,18);try{localStorage.setItem('ourWorldDisplayName',myName)}catch(x){}$('go').disabled=!(pick&&myName);refreshPrincessName();if(started&&room)room.presence({displayName:myName})});
 function tryFS(){try{const r=document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen();if(r&&r.catch)r.catch(()=>{});if(screen.orientation&&screen.orientation.lock)screen.orientation.lock('landscape').catch(()=>{})}catch(e){}}
