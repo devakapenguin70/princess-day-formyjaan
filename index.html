@@ -429,7 +429,9 @@ async function refreshRoomAuthority(){
     const lease=Array.isArray(data)?data[0]:data;
     if(!lease||!lease.host_id)throw new Error('Room host lease response was empty');
     const nextOwner=lease.host_id===clientId;
+    const wasOwner=owner;
     if(owner!==nextOwner){owner=nextOwner;applyNetworkRole()}
+    if(nextOwner&&!wasOwner&&started)playSceneMusic(busy&&busy.t==='dance'?'dance':busy&&busy.t==='stage'?'stage':'explore',true);
     // Heartbeat all peers even when nobody is moving; this also refreshes the roster.
     room.presence({});
   }catch(e){
@@ -468,8 +470,7 @@ room={
         roomReady=true;owner=false;rebuildRemotePeers();applyNetworkRole();
         room.presence({displayName:myName,role:myRole});
         await refreshRoomAuthority();
-        if(started&&owner)playSceneMusic('explore',true);
-        if(authorityTimer)clearInterval(authorityTimer);
+        if(authorityTimerclearInterval(authorityTimer);
         authorityTimer=setInterval(refreshRoomAuthority,3000);
       }else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED'){
         roomReady=false;
