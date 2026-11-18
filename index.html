@@ -364,7 +364,7 @@ function plPlay(i,force=false){
  plRender()
 }
 function plPause(){
- plOn=false;au.pause();try{au.currentTime=0}catch(e){}
+ plOn=false;remotePlayToken++;au.pause();try{au.currentTime=0}catch(e){}au.removeAttribute('src');au.load();
  if(room&&owner)room.presence({musicPlaying:false,musicEvent:Date.now()});
  plRender()
 }
@@ -543,7 +543,7 @@ function loop(now){requestAnimationFrame(loop);const dt=Math.min((now-last)/1000
  animals(dt,p);
  if(room){ptT-=dt;if(ptT<0){ptT=.1;room.presence({x:+p.x.toFixed(2),z:+p.z.toFixed(2),y:+p.y.toFixed(2),ry:+me.rotation.y.toFixed(2)})}
    if(!owner&&o&&o.presence.fxEvent&&o.presence.fxEvent!==lastFxEvent){lastFxEvent=o.presence.fxEvent;for(let i=0;i<5;i++)burst((rnd()-.5)*38,18+rnd()*14,-28-rnd()*24,rnd()<.3)}
-   if(!owner&&o&&o.presence.musicEvent&&o.presence.musicEvent!==lastRemoteMusic){lastRemoteMusic=o.presence.musicEvent;if(o.presence.musicPlaying&&o.presence.musicUrl){remoteMusicUrl=o.presence.musicUrl;playRemoteMusic(o.presence)}else{au.pause();au.currentTime=0}}
+   if(!owner&&o&&o.presence.musicEvent&&o.presence.musicEvent!==lastRemoteMusic){lastRemoteMusic=o.presence.musicEvent;if(o.presence.musicPlaying&&o.presence.musicUrl){remoteMusicUrl=o.presence.musicUrl;playRemoteMusic(o.presence)}else{remotePlayToken++;au.pause();try{au.currentTime=0}catch(e){}au.removeAttribute('src');au.load();remoteMusicUrl='';}}
    if(!owner&&o&&typeof o.presence.dayMode==='number'&&o.presence.dayMode!==dayMode){lastRemoteDay=o.presence.dayEvent||0;setDayMode(o.presence.dayMode,false)}
    if(!owner&&o&&typeof o.presence.wheelMode==='number'&&o.presence.wheelMode!==wheelMode){lastRemoteWheel=o.presence.wheelEvent||0;wheelMode=o.presence.wheelMode;wheelSpeed=wheelSpeeds[wheelMode]||0}
   }
