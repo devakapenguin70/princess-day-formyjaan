@@ -411,7 +411,19 @@ async function shareRoom(){
  const box=document.createElement('textarea');box.value=link;box.style.position='fixed';box.style.opacity='0';document.body.appendChild(box);box.select();let copied=false;try{copied=document.execCommand('copy')}catch(e){}box.remove();toast(copied?'Exact room link copied — send it to her 💞':'Copy this room link: '+link);
 }
 $('bShare').onclick=shareRoom;
-let authorityTimer=null,authorityBusy=false;
+let authorityTimer=null,authorityBusy=false,presenceTrackTimer=null,presenceTrackLast=0;
+function schedulePresenceTrack(){
+  if(!sbChannel||!roomReady)return;
+  if(presenceTrackTimer)return;
+  const wait=Math.max(0,2000-(Date.now()-presenceTrackLast));
+  presenceTrackTimer=setTimeout(async()=>{
+    presenceTrackTimer=null;
+    if(!sbChannel||!roomReady)return;
+    presenceTrackLast=Date.now();
+    try{await sbChannel.track({...localPresence,clientId,joinedAt,owner})}
+    catch(e){console.warn('Presence update rate-limited; Broadcast roster remains active:',e)}
+  },wait);
+}
 function applyNetworkRole(){
   // Admin permissions belong to the Boy character only, never to the first
   // connection or whichever client happens to hold a server-side lease.
@@ -459,7 +471,7 @@ room={
     const changed=patch||{};Object.assign(localPresence,changed);
     if(!sbChannel||!roomReady)return;
     const persistent=['role','roleSelected','displayName','musicUrl','musicName','musicEvent','musicStartedAt','musicTime','musicPlaying','dayMode','dayEvent','wheelMode','wheelEvent','fxEvent','act','actStartedAt','sg','ans','answerChoice'];
-    if(Object.keys(changed).some(k=>persistent.includes(k)))sbChannel.track({...localPresence,clientId,joinedAt,owner}).catch(e=>console.warn('Presence update failed; Broadcast roster remains active:',e));
+    if(Object.keys(changed).some(k=>persistent.includes(k)))schedulePresenceTrack();
     sbChannel.send({type:'broadcast',event:'state',payload:{...localPresence,clientId,joinedAt,owner}}).catch(()=>{});
   },
   position(patch){Object.assign(localPresence,patch);if(!sbChannel||!roomReady)return;sbChannel.send({type:'broadcast',event:'position',payload:{...localPresence,clientId,joinedAt,owner,positionSeq:++positionSeq,positionAt:Date.now()}}).catch(e=>console.warn('Position broadcast failed:',e));},
@@ -487,8 +499,8 @@ room={
         joinedAt=Date.now();
         try{await sbChannel.track({...localPresence,clientId,joinedAt,owner:false})}
         catch(e){console.warn('Initial Presence track failed; Broadcast roster remains active:',e)}
-        roomReady=true;owner=false;rebuildRemotePeers();applyNetworkRole();
-        room.presence({displayName:myName});
+        roomReady=true;presenceTrackLast=Date.now();owner=false;rebuildRemotePeers();applyNetworkRole();
+        // Initial track above already contains the current display name; avoid an immediate duplicate Presence write.
         await refreshRoomAuthority();
         if(authorityTimer)clearInterval(authorityTimer);
         authorityTimer=setInterval(refreshRoomAuthority,3000);
