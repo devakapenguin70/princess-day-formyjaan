@@ -470,7 +470,7 @@ room={
         await refreshRoomAuthority();
         if(started&&owner)playSceneMusic('explore',true);
         if(authorityTimer)clearInterval(authorityTimer);
-        authorityTimer=setInterval(refreshRoomAuthority,5000);
+        authorityTimer=setInterval(refreshRoomAuthority,3000);
       }else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED'){
         roomReady=false;
         if(authorityTimer){clearInterval(authorityTimer);authorityTimer=null}
