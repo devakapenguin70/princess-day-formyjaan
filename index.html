@@ -390,7 +390,7 @@ try{const o=indexedDB.open('cw-songs-custom-only',1);o.onupgradeneeded=()=>o.res
 // state
 let started=false,defRole='boy',pick=null,stL=0;
 let myRole='boy',me=boy,ot=girl,room=null,want=null,wantT=0,busy=null,fin=null,spin=0,bounce=0,near=null,ptT=0,partnerSeen=false;
-function setRole(r){myRole=r;me=myRole==='boy'?boy:girl;ot=myRole==='boy'?girl:boy;boy.visible=myRole==='boy';girl.visible=myRole==='girl';me.add(mark);if(room)room.presence({role:myRole,displayName:myName});refreshPrincessName()}
+function setRole(r){myRole=r;owner=r==='boy';me=myRole==='boy'?boy:girl;ot=myRole==='boy'?girl:boy;boy.visible=myRole==='boy';girl.visible=myRole==='girl';me.add(mark);if(room)room.presence({role:myRole,displayName:myName});refreshPrincessName()}
 const peer=()=>{try{return room&&room.peers().find(p=>!p.isMe&&p.kind==='viewer')||null}catch(e){return null}};
 let owner=false;
 // Supabase Realtime multiplayer adapter. First connected client is the host;
@@ -403,8 +403,11 @@ let sb=null,sbChannel=null,localPresence={role:null,displayName:myName},remotePe
 const ROOM_ID='princess-day-castle-world';
 let authorityTimer=null,authorityBusy=false;
 function applyNetworkRole(){
+  // Admin permissions belong to the Boy character only, never to the first
+  // connection or whichever client happens to hold a server-side lease.
+  owner=started&&myRole==='boy';
   if(started){document.body.classList.toggle('owner',owner);document.body.classList.toggle('guest',!owner)}
-  $('status').textContent=owner?'🟢 You are hosting this room.':'🟢 Connected to the shared world.';refreshPrincessName();
+  $('status').textContent=owner?'🟢 You are the admin of this world.':'🟢 Connected to the shared world.';refreshPrincessName();
 }
 function upsertRemotePeer(payload){
   if(!payload||!payload.clientId||payload.clientId===clientId)return;
@@ -420,24 +423,14 @@ function rebuildRemotePeers(){
   const cutoff=Date.now()-25000;
   remotePeers=remotePeers.filter(p=>p.seenAt>cutoff);
 }
-async function refreshRoomAuthority(){
-  if(!sb||!roomReady||authorityBusy)return;
-  authorityBusy=true;
-  try{
-    const {data,error}=await sb.rpc('claim_princess_room_host',{p_room_id:ROOM_ID,p_client_id:clientId});
-    if(error)throw error;
-    const lease=Array.isArray(data)?data[0]:data;
-    if(!lease||!lease.host_id)throw new Error('Room host lease response was empty');
-    const nextOwner=lease.host_id===clientId;
-    const wasOwner=owner;
-    if(owner!==nextOwner){owner=nextOwner;applyNetworkRole()}
-    if(nextOwner&&!wasOwner&&started)playSceneMusic(busy&&busy.t==='dance'?'dance':busy&&busy.t==='stage'?'stage':'explore',true);
-    // Heartbeat all peers even when nobody is moving; this also refreshes the roster.
-    room.presence({});
-  }catch(e){
-    console.warn('Room authority check failed; admin controls disabled until verified:',e);
-    if(owner){owner=false;applyNetworkRole()}
-  }finally{authorityBusy=false}
+function refreshRoomAuthority(){
+  if(!roomReady)return;
+  // The selected character is the authority: Boy is always admin; Girl is
+  // always a guest. Reconnects and connection order must never transfer admin.
+  const nextOwner=started&&myRole==='boy';
+  if(owner!==nextOwner){owner=nextOwner;applyNetworkRole()}
+  // Heartbeat peers even when nobody is moving.
+  room.presence({});
 }
 room={
   presence(patch){
