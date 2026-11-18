@@ -16,7 +16,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--bg);color:var(--
 #toast{position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);left:50%;transform:translateX(-50%);background:var(--card);padding:10px 18px;border-radius:16px;font-size:15px;font-style:italic;opacity:0;transition:opacity .4s;width:max-content;max-width:50vw;text-align:center;pointer-events:none}
 #act,#stop{position:fixed;right:18px;background:var(--pink);color:#fff;border:0;border-radius:22px;padding:14px 20px;font-size:16px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.3);display:none;font-family:inherit}
 #act{bottom:calc(env(safe-area-inset-bottom,0px) + 36px)}#stop{bottom:calc(env(safe-area-inset-bottom,0px) + 92px);background:#7a5a6a;padding:8px 14px;font-size:13px}
-#joy{position:fixed;left:22px;bottom:calc(env(safe-area-inset-bottom,0px) + 26px);width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.35);border:2px solid rgba(255,255,255,.7)}
+#joy{position:fixed;left:42px;bottom:calc(env(safe-area-inset-bottom,0px) + 42px);width:112px;height:112px;border-radius:50%;background:rgba(255,255,255,.35);border:2px solid rgba(255,255,255,.7)}
 #knob{position:absolute;left:50%;top:50%;width:48px;height:48px;margin:-24px;border-radius:50%;background:var(--pink)}
 #hint{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 4px);width:100%;text-align:center;font-size:11px;opacity:.75;pointer-events:none;color:#fff;text-shadow:0 1px 3px #000}
 #card,#rot{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45)}
@@ -52,15 +52,15 @@ body.guest .owner-only{display:none!important}body:not(.on) #joy,body:not(.on) #
 <div id="toast"></div><button id="stop">✖ Stop</button><button id="act"></button><div id="joy"><div id="knob"></div></div>
 <div id="hint">Move: WASD / joystick · Look: drag or Q/E · Zoom: scroll · Act: Enter</div>
 <div id="card"><div><h3 id="ct"></h3><p id="cp"></p><textarea id="ci" rows="2" placeholder="Type your wish…" style="display:none"></textarea><button id="cb"></button><button id="cb2"></button></div></div>
-<div id="pl"><div class="box"><h3>🎵 Your music</h3><div id="plist"></div><div><button id="plPrev">⏮</button><button id="plPlay">▶</button><button id="plNext">⏭</button></div><label class="addbtn">➕ Add music from this phone<input id="plFile" type="file" accept="audio/*" multiple hidden></label><p style="font-size:11px;opacity:.7;margin:6px 0">For both phones to hear the same song, add a shareable HTTPS audio link below.</p><input id="musicUrl" type="url" placeholder="Paste a shared MP3/audio URL" style="box-sizing:border-box;width:100%;padding:10px;border:1px solid #ec6a9a;border-radius:10px;margin:5px 0;background:transparent;color:inherit"><button id="addMusicUrl">Add shared link</button><button id="plClose">Close</button></div></div>
-<div id="intro"><div class="ib"><div class="crown">👑</div><h1>Happy Princess Day</h1><h2>my little princess 💖</h2><p id="iq"></p><div class="pick"><h3>Your character is assigned automatically</h3><div class="av"><button id="pB" class="avb"><span>👦</span>Boy<small id="tB"></small></button><button id="pG" class="avb"><span>👧</span>Girl<small id="tG"></small></button></div><button id="go" disabled>Enter our little world ✨</button></div></div></div>
+<div id="pl"><div class="box"><h3>🎵 Your music</h3><div id="plist"></div><div><button id="plPrev">⏮</button><button id="plPlay">▶</button><button id="plNext">⏭</button></div><label class="addbtn">➕ Add music from this phone<input id="plFile" type="file" accept="audio/*" multiple hidden></label><p style="font-size:11px;opacity:.7;margin:6px 0">Songs selected here upload to the shared music library so both players can hear them. (Max 50 MB per song.)</p><input id="musicUrl" type="url" placeholder="Paste a shared MP3/audio URL" style="box-sizing:border-box;width:100%;padding:10px;border:1px solid #ec6a9a;border-radius:10px;margin:5px 0;background:transparent;color:inherit"><button id="addMusicUrl">Add shared link</button><button id="plClose">Close</button></div></div>
+<div id="intro"><div class="ib"><div class="crown">👑</div><h1>Happy Princess Day</h1><h2>my little princess 💖</h2><p id="iq"></p><div class="pick"><h3>Your character is assigned automatically</h3><div class="av"><button id="pB" class="avb"><span>👦</span>Boy<small id="tB"></small></button><button id="pG" class="avb"><span>👧</span>Girl<small id="tG"></small></button></div><input id="displayName" maxlength="18" autocomplete="nickname" placeholder="Your display name" value="" style="box-sizing:border-box;width:100%;padding:11px;border:1px solid #ec6a9a;border-radius:12px;margin:8px 0;background:transparent;color:inherit;font:inherit"><button id="go" disabled>Enter our little world ✨</button></div></div></div>
 <div id="rot"><div><h3>📱 Turn your phone sideways</h3><p>This world plays best in landscape and full screen.</p><button id="rFs">Full screen + landscape</button><button id="rNo">Play anyway</button></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const NAMES=["Cutie","Kuchupuchu"];
 const T=THREE,$=id=>document.getElementById(id),rnd=Math.random,PI=Math.PI,ease=x=>x*x*(3-2*x);
-$('names').textContent=NAMES[0]+' & '+NAMES[1];
+let myName='Princess';try{myName=(localStorage.getItem('princessDayDisplayName')||'Princess').trim().slice(0,18)||'Princess'}catch(e){}
+$('names').textContent='Prince & '+myName;
 const QUOTES=["Home is wherever you’re standing next to me.","Every flower here blooms brighter when you smile.","Two hearts, one garden, a thousand tiny forevers.","You are my favorite place to rest.","I’d choose you in every world, in every season.","Love grows where we plant it, together.","With you, ordinary moments turn into magic."];
 const PQ=["Every princess needs a castle — but you make the whole kingdom sparkle.","A true princess wears kindness like a crown, and yours shines the brightest.","Today the entire kingdom bows to its favourite princess. 👑","You don’t need a tiara to be royalty — you just need to be you.","Happy Princess Day! May your day be as magical as your smile.","Fairy tales are lovely, but living one with you is even better.","Some wait for a prince; you simply deserve the whole world.","Princess, today the stars, the flowers and I are all celebrating you."];
 QUOTES.push(...PQ);
@@ -219,10 +219,9 @@ for(let i=0;i<12;i++){const a=i/12*PI*2,x=Math.cos(a)*5.4,z=-37+Math.sin(a)*4.6;
 const ring=new T.Group();add(C(.14,.14,.14,0xb03050,12),0,0,0,ring);add(mesh(new T.TorusGeometry(.09,.025,8,16),0xffd24a),0,.15,0,ring).rotation.x=PI/2;add(S(.045,0xaee8ff,1,1,1,8),0,.27,0,ring);ring.visible=false;scene.add(ring);
 glow(0,1.4,-37,7);glow(0,3.2,-42,6);const warm=new T.PointLight(0xffb070,0,22);warm.position.set(0,3,-37);scene.add(warm);
 // labels
-function label(t,x,y,z,w=5){const c=document.createElement('canvas');c.width=512;c.height=256;const g=c.getContext('2d');g.fillStyle='rgba(255,248,252,.94)';g.beginPath();g.roundRect(8,8,496,240,40);g.fill();g.strokeStyle='#ec6a9a';g.lineWidth=7;g.stroke();g.fillStyle='#7a2b52';g.font='bold 36px Georgia,serif';g.textAlign='center';
- let ls=[],ln='';t.split(' ').forEach(wd=>{if((ln+wd).length>20){ls.push(ln);ln=''}ln+=wd+' '});ls.push(ln);ls.forEach((l,i)=>g.fillText(l.trim(),256,128+(i-(ls.length-1)/2)*46+12));
- const s=new T.Sprite(new T.SpriteMaterial({map:new T.CanvasTexture(c),depthWrite:false}));s.scale.set(w,w/2,1);s.position.set(x,y,z);scene.add(s)}
-label('Happy Princess Day 👑',0,5.6,-9,5.5);label('Happy Princess Day, my little princess 👑',0,10.5,-54,9);label(QUOTES[2],-5,3.3,-5.6,4);label(QUOTES[4],-14,5.6,4,4);label(QUOTES[1],11,7.4,-16,4);
+function label(t,x,y,z,w=5){const c=document.createElement('canvas');c.width=512;c.height=256;const g=c.getContext('2d');const draw=txt=>{g.clearRect(0,0,512,256);g.fillStyle='rgba(255,248,252,.94)';g.beginPath();g.roundRect(8,8,496,240,40);g.fill();g.strokeStyle='#ec6a9a';g.lineWidth=7;g.stroke();g.fillStyle='#7a2b52';g.font='bold 36px Georgia,serif';g.textAlign='center';let ls=[],ln='';txt.split(' ').forEach(wd=>{if((ln+wd).length>20){ls.push(ln);ln=''}ln+=wd+' '});ls.push(ln);ls.forEach((l,i)=>g.fillText(l.trim(),256,128+(i-(ls.length-1)/2)*46+12))};draw(t);const tex=new T.CanvasTexture(c);const s=new T.Sprite(new T.SpriteMaterial({map:tex,depthWrite:false}));s.scale.set(w,w/2,1);s.position.set(x,y,z);s.userData.setText=txt=>{draw(txt);tex.needsUpdate=true};scene.add(s);return s}
+label('Happy Princess Day 👑',0,5.6,-9,5.5);const princessBanner=label('Happy Princess Day, Princess! 💗',0,10.5,-54,9);label(QUOTES[2],-5,3.3,-5.6,4);label(QUOTES[4],-14,5.6,4,4);label(QUOTES[1],11,7.4,-16,4);
+function refreshPrincessName(){const p=typeof peer==='function'?peer():null;const girlName=(myRole==='girl'?myName:(p&&p.presence&&p.presence.displayName)||'Princess').trim()||'Princess';princessBanner.userData.setText('Happy Princess Day, '+girlName+'! 💗');$('names').textContent='Prince & '+girlName}
 // people
 const OL=new T.MeshBasicMaterial({color:0x3b2230,side:T.BackSide});
 function person(girl){const g=new T.Group(),h=new T.Group(),sk=0xffe0cc,hr=0x2b1d22;h.position.y=1.55;h.scale.setScalar(.9);g.rotation.order='YXZ';g.add(h);
@@ -334,18 +333,19 @@ const TR=[];let plI=-1,plOn=false,DB;const au=new Audio();au.preload='auto';
 let lastRemoteMusic=0,remoteMusicUrl='';
 au.onended=()=>{if(busy&&busy.t==='stage'&&owner)endAct();else if(owner)plNext(1)};
 function plRender(){const l=$('plist');l.textContent='';TR.forEach((t,i)=>{const r=document.createElement('div');r.className='row'+(i===plI&&plOn?' on':'');const sp=document.createElement('span');sp.textContent=(i===plI&&plOn?'🎶 ':'')+t.n;r.appendChild(sp);r.onclick=()=>plPlay(i);const sb=document.createElement('button');sb.textContent='🎤';sb.title='Use for the stage';sb.style.opacity=i===stageI?1:.35;sb.onclick=e=>{e.stopPropagation();stageI=i;plRender();toast('Stage song selected: '+TR[i].n)};r.appendChild(sb);const x=document.createElement('button');x.textContent='✖';x.onclick=e=>{e.stopPropagation();plDel(i)};r.appendChild(x);l.appendChild(r)});$('plPlay').textContent=plOn?'⏸':'▶'}
-function plPlay(i){if(!owner)return;if(!TR.length)return toast('Add your music first 🎵');plI=Math.max(0,Math.min(i,TR.length-1));plOn=true;stopMusic();au.pause();const t=TR[plI];au.src=t.u;au.currentTime=0;au.play().catch(()=>toast('Tap play again to allow audio playback'));if(room&&t.shared)room.presence({musicUrl:t.u,musicEvent:Date.now(),musicPlaying:true});plRender()}
+function plPlay(i){if(!owner)return;if(!TR.length)return toast('Add your music first 🎵');plI=Math.max(0,Math.min(i,TR.length-1));plOn=true;stopMusic();au.pause();const t=TR[plI];au.src=t.u;au.currentTime=0;au.play().catch(()=>toast('Tap play again to allow audio playback'));if(room&&t.shared){const startedAt=Date.now();room.presence({musicUrl:t.u,musicName:t.n,musicEvent:startedAt,musicStartedAt:startedAt,musicTime:0,musicPlaying:true})}plRender()}
 function plPause(){plOn=false;stopMusic();au.pause();if(room&&owner)room.presence({musicPlaying:false,musicEvent:Date.now()});plRender()}
+function playRemoteMusic(p){au.pause();au.src=p.musicUrl;au.load();const seekAndPlay=()=>{const elapsed=p.musicStartedAt?Math.max(0,(Date.now()-p.musicStartedAt)/1000):0;try{au.currentTime=Math.max(0,(p.musicTime||0)+elapsed)}catch(e){}au.play().catch(()=>toast('Tap the screen once to enable shared music'))};if(au.readyState>=1)seekAndPlay();else au.addEventListener('loadedmetadata',seekAndPlay,{once:true})}
 function plNext(d){if(TR.length)plPlay(((plI<0?0:plI)+d+TR.length)%TR.length)}
 function plDel(i){const t=TR[i];if(i===plI)plPause();TR.splice(i,1);if(plI>i)plI--;if(stageI===i)stageI=0;else if(stageI>i)stageI--;try{if(t.id!=null)DB.transaction('s','readwrite').objectStore('s').delete(t.id)}catch(e){}plRender()}
 $('bPl').onclick=()=>{if(!owner)return;plRender();$('pl').style.display='flex'};$('plClose').onclick=()=>$('pl').style.display='none';$('plPlay').onclick=()=>plOn?plPause():plPlay(plI<0?0:plI);$('plPrev').onclick=()=>plNext(-1);$('plNext').onclick=()=>plNext(1);
-$('plFile').onchange=e=>{[...e.target.files].forEach(f=>{const t={n:f.name.replace(/\\.[^.]+$/,''),u:URL.createObjectURL(f),shared:false};TR.push(t);try{const r=DB.transaction('s','readwrite').objectStore('s').add({n:t.n,b:f});r.onsuccess=()=>t.id=r.result}catch(x){}});e.target.value='';plRender()};
+$('plFile').onchange=async e=>{const files=[...e.target.files];e.target.value='';if(!files.length)return;if(!sb)return toast('Music service is still connecting — try again in a moment');for(const f of files){if(!f.type.startsWith('audio/')){toast('Please choose an audio file');continue}if(f.size>50*1024*1024){toast(f.name+' is over the 50 MB limit');continue}toast('Uploading '+f.name+'…');try{const safe=f.name.replace(/[^a-zA-Z0-9._-]/g,'_').slice(-90)||'song';const path=Date.now()+'-'+(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2))+'-'+safe;const {data,error}=await sb.storage.from('princess-day-music').upload(path,f,{contentType:f.type||'audio/mpeg',cacheControl:'3600',upsert:false});if(error)throw error;const {data:pub}=sb.storage.from('princess-day-music').getPublicUrl(data.path);const t={n:f.name.replace(/\\.[^.]+$/,''),u:pub.publicUrl,shared:true,storagePath:data.path};TR.push(t);try{if(DB){const saved=DB.transaction('s','readwrite').objectStore('s').add({n:t.n,u:t.u,shared:true});saved.onsuccess=()=>t.id=saved.result}}catch(x){}toast(f.name+' is ready for both players 💗')}catch(err){console.error('Shared music upload:',err);toast('Upload failed: '+(err.message||'check Storage permissions'))}}plRender()};
 $('addMusicUrl').onclick=()=>{if(!owner)return;const u=$('musicUrl').value.trim();if(!/^https:\/\/\//i.test(u))return toast('Please enter a valid HTTPS audio link');TR.push({n:'Shared music '+(TR.length+1),u,shared:true});$('musicUrl').value='';plRender();toast('Shared music link added 💗')};
-try{const o=indexedDB.open('cw-songs-custom-only',1);o.onupgradeneeded=()=>o.result.createObjectStore('s',{autoIncrement:true});o.onsuccess=()=>{DB=o.result;try{DB.transaction('s').objectStore('s').openCursor().onsuccess=e=>{const c=e.target.result;if(c){TR.push({n:c.value.n,u:URL.createObjectURL(c.value.b),shared:false,id:c.key});c.continue()}else plRender()}}catch(x){}}}catch(e){}
+try{const o=indexedDB.open('cw-songs-custom-only',1);o.onupgradeneeded=()=>o.result.createObjectStore('s',{autoIncrement:true});o.onsuccess=()=>{DB=o.result;try{DB.transaction('s').objectStore('s').openCursor().onsuccess=e=>{const c=e.target.result;if(c){TR.push(c.value.shared&&c.value.u?{n:c.value.n,u:c.value.u,shared:true,id:c.key}:{n:c.value.n,u:URL.createObjectURL(c.value.b),shared:false,id:c.key});c.continue()}else plRender()}}catch(x){}}}catch(e){}
 // state
 let started=false,defRole='boy',pick=null,stL=0;
 let myRole='boy',me=boy,ot=girl,room=null,want=null,wantT=0,busy=null,fin=null,spin=0,bounce=0,near=null,ptT=0,partnerSeen=false;
-function setRole(r){myRole=owner?'boy':'girl';me=myRole==='boy'?boy:girl;ot=myRole==='boy'?girl:boy;boy.visible=myRole==='boy';girl.visible=myRole==='girl';me.add(mark);if(room)room.presence({role:myRole})}
+function setRole(r){myRole=owner?'boy':'girl';me=myRole==='boy'?boy:girl;ot=myRole==='boy'?girl:boy;boy.visible=myRole==='boy';girl.visible=myRole==='girl';me.add(mark);if(room)room.presence({role:myRole,displayName:myName});refreshPrincessName()}
 const peer=()=>{try{return room&&room.peers().find(p=>!p.isMe&&p.kind==='viewer')||null}catch(e){return null}};
 let owner=true;
 // Supabase Realtime multiplayer adapter. First connected client is the host;
@@ -354,12 +354,12 @@ let owner=true;
 const SB_URL='https://lxpngmquwpyhsvyeukid.supabase.co';
 const SB_KEY='sb_publishable_vspaMHJvc918VdTqQKcSuQ_IfI6oybS';
 const clientId=(crypto.randomUUID?crypto.randomUUID():('p'+Date.now()+Math.random().toString(36).slice(2)));
-let sb=null,sbChannel=null,localPresence={role:'boy'},remotePeers=[],joinedAt=Date.now(),roomReady=false;
+let sb=null,sbChannel=null,localPresence={role:'boy',displayName:myName},remotePeers=[],joinedAt=Date.now(),roomReady=false;
 function applyNetworkRole(){
   defRole=owner?'boy':'girl';
   if(started){setRole(defRole);document.body.classList.toggle('owner',owner);document.body.classList.toggle('guest',!owner)}
   else {pickRole(defRole);$('pB').disabled=!owner;$('pG').disabled=owner}
-  $('status').textContent=owner?'🟢 Host connected — invite one guest to join your world.':'🟢 Connected as guest — the host controls the surprises.';
+  $('status').textContent=owner?'🟢 Host connected — invite one guest to join your world.':'🟢 Connected as guest — the host controls the surprises.';refreshPrincessName();
 }
 function rebuildRemotePeers(){
   if(!sbChannel)return;
@@ -376,8 +376,10 @@ function rebuildRemotePeers(){
 }
 room={
   presence(patch){
-    Object.assign(localPresence,patch||{});
+    const changed=patch||{};Object.assign(localPresence,changed);
     if(!sbChannel||!roomReady)return;
+    const persistent=['role','displayName','musicUrl','musicName','musicEvent','musicStartedAt','musicTime','musicPlaying','dayMode','dayEvent','wheelMode','wheelEvent','fxEvent','act','sg','ans'];
+    if(Object.keys(changed).some(k=>persistent.includes(k)))sbChannel.track({...localPresence,clientId,joinedAt,owner}).catch(()=>{});
     sbChannel.send({type:'broadcast',event:'state',payload:{...localPresence,clientId,joinedAt,owner}}).catch(()=>{});
   },
   peers(){return remotePeers}
@@ -391,9 +393,9 @@ room={
       if(!payload||payload.clientId===clientId)return;
       const i=remotePeers.findIndex(p=>p.presence.clientId===payload.clientId);
       const item={isMe:false,kind:'viewer',presence:payload};
-      if(i<0)remotePeers.push(item);else remotePeers[i]=item;
+      if(i<0)remotePeers.push(item);else remotePeers[i]=item;refreshPrincessName();
     });
-    sbChannel.on('presence',{event:'sync'},()=>rebuildRemotePeers());
+    sbChannel.on('presence',{event:'sync'},()=>{rebuildRemotePeers();refreshPrincessName()});
     sbChannel.on('presence',{event:'join'},()=>rebuildRemotePeers());
     sbChannel.on('presence',{event:'leave'},()=>rebuildRemotePeers());
     sbChannel.subscribe(async status=>{
@@ -414,7 +416,8 @@ setRole('boy');$('bDay').textContent='☀️';$('bWheel').textContent='🎡';
 let qi=0;const showQ=()=>{const e=$('iq');e.style.opacity=0;setTimeout(()=>{e.textContent=PQ[qi++%PQ.length];e.style.opacity=1},500)};showQ();setInterval(()=>{if(!started)showQ()},5200);
 function takenBy(r){const o=peer();return !!(o&&o.presence.role===r)}
 function pickRole(r){r=owner?'boy':'girl';if(takenBy(r)){toast('That character is already in the world 💞');return}pick=r;$('pB').classList.toggle('sel',r==='boy');$('pG').classList.toggle('sel',r==='girl');$('pB').disabled=!owner;$('pG').disabled=owner;$('go').disabled=false}
-$('pB').onclick=()=>pickRole('boy');$('pG').onclick=()=>pickRole('girl');
+$('pB').onclick=()=>pickRole('boy');$('pG').onclick=()=>pickRole('girl');$('displayName').value=myName;
+$('displayName').addEventListener('input',e=>{myName=(e.target.value||'').trim().slice(0,18)||'Princess';try{localStorage.setItem('princessDayDisplayName',myName)}catch(x){}refreshPrincessName();if(started&&room)room.presence({displayName:myName})});
 function tryFS(){try{const r=document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen();if(r&&r.catch)r.catch(()=>{});if(screen.orientation&&screen.orientation.lock)screen.orientation.lock('landscape').catch(()=>{})}catch(e){}}
 $('go').onclick=()=>{if(!pick||takenBy(pick))return;setRole(pick);started=true;document.body.classList.add('on');document.body.classList.toggle('guest',!owner);document.body.classList.toggle('owner',owner);$('intro').style.opacity=0;setTimeout(()=>$('intro').style.display='none',800);if(!document.fullscreenElement)tryFS();toast(PQ[Math.floor(rnd()*PQ.length)]);rs()};
 
@@ -432,7 +435,7 @@ const pj=new T.Group();pj.add(new T.Mesh(new T.TorusGeometry(.09,.02,6,16),M(0xf
 const fb=new Uint8Array(128);function lvl(){const a=(plOn&&TR[plI]&&!TR[plI].s)?anA:anS;if(!a)return .4+.3*Math.sin(tt*9);a.getByteFrequencyData(fb);let sm=0;for(let i=0;i<20;i++)sm+=fb[i];const v=Math.min(1,sm/20/150);return v>.02?v:.15+.15*Math.abs(Math.sin(tt*7))}
 const ang=(a,b,k)=>{let x=b-a;while(x>PI)x-=2*PI;while(x<-PI)x+=2*PI;return a+x*k};
 const DUR={dance:40,bench:34,boat:58,prop:999,payal:20,stage:70,ferris:65,livingroom:110};let camT=null,lastEnd=-99,stageI=0;
-const CAMS={prop:{y:PI/2,p:.22,d:8.5},payal:{y:.3,p:.25,d:7.5},bench:{y:.5,p:.25,d:8},stage:{y:.9,p:.2,d:11},ferris:{y:.2,p:.28,d:13.5},livingroom:{y:0,p:.2,d:10.5}};
+const CAMS={prop:{y:PI/2,p:.22,d:8.5},payal:{y:.3,p:.25,d:7.5},bench:{y:.5,p:.25,d:8},stage:{y:.9,p:.2,d:11},ferris:{y:.2,p:.28,d:13.5},livingroom:{y:.55,p:.14,d:5.8}};
 function actMusic(s){/* Built-in soundtrack removed; use the owner's custom playlist. */}
 function startAct(t){want=null;busy={t,k:0,d:DUR[t],s:{},bt:{},bl:{},wk:{},yes:0};camT=CAMS[t]||null;let sg=null;
  if(t==='stage'){const o=peer();if(owner){const tr=TR[stageI]||TR[0];sg=tr?(tr.shared?tr.u:'custom'):null;busy.d=tr?70:35;busy.sI=tr?stageI:-1}else{sg=(o&&o.presence.sg)||null;busy.sI=Math.max(0,TR.findIndex(x=>x.shared&&x.u===sg))}busy.song=1}
@@ -494,7 +497,7 @@ function loop(now){requestAnimationFrame(loop);const dt=Math.min((now-last)/1000
  animals(dt,p);
  if(room){ptT-=dt;if(ptT<0){ptT=.1;room.presence({x:+p.x.toFixed(2),z:+p.z.toFixed(2),y:+p.y.toFixed(2),ry:+me.rotation.y.toFixed(2)})}
    if(!owner&&o&&o.presence.fxEvent&&o.presence.fxEvent!==lastFxEvent){lastFxEvent=o.presence.fxEvent;for(let i=0;i<5;i++)burst((rnd()-.5)*38,18+rnd()*14,-28-rnd()*24,rnd()<.3)}
-   if(!owner&&o&&o.presence.musicEvent&&o.presence.musicEvent!==lastRemoteMusic){lastRemoteMusic=o.presence.musicEvent;if(o.presence.musicPlaying&&o.presence.musicUrl){remoteMusicUrl=o.presence.musicUrl;au.pause();au.src=remoteMusicUrl;au.currentTime=0;au.play().catch(()=>toast('Tap the screen once to enable shared music'))}else{au.pause();au.currentTime=0}}
+   if(!owner&&o&&o.presence.musicEvent&&o.presence.musicEvent!==lastRemoteMusic){lastRemoteMusic=o.presence.musicEvent;if(o.presence.musicPlaying&&o.presence.musicUrl){remoteMusicUrl=o.presence.musicUrl;playRemoteMusic(o.presence)}else{au.pause();au.currentTime=0}}
    if(!owner&&o&&typeof o.presence.dayMode==='number'&&o.presence.dayMode!==dayMode){lastRemoteDay=o.presence.dayEvent||0;setDayMode(o.presence.dayMode,false)}
    if(!owner&&o&&typeof o.presence.wheelMode==='number'&&o.presence.wheelMode!==wheelMode){lastRemoteWheel=o.presence.wheelEvent||0;wheelMode=o.presence.wheelMode;wheelSpeed=wheelSpeeds[wheelMode]||0}
   }
@@ -560,11 +563,12 @@ function loop(now){requestAnimationFrame(loop);const dt=Math.min((now-last)/1000
  clouds.forEach(c=>{c.position.x+=dt*.8;if(c.position.x>120)c.position.x=-120;c.children.forEach(s=>s.material.opacity=.85-.6*nf)});
  if(!started){yaw+=dt*.12;pitch=.35;dist=12}
  if(camT&&!drag){const k2=Math.min(1,2*dt);yaw=ang(yaw,camT.y,k2);pitch+=(camT.p-pitch)*k2;dist+=(camT.d-dist)*k2}
- const f=busy&&busy.t==='boat'?swan.position:p,cp2=new T.Vector3(f.x+Math.sin(yaw)*Math.cos(pitch)*dist,Math.max(.6,f.y+Math.sin(pitch)*dist+1),f.z+Math.cos(yaw)*Math.cos(pitch)*dist);
- camP.lerp(cp2,1-Math.exp(-9*dt));cam.position.copy(camP);camL.lerp(new T.Vector3(f.x,f.y+1.6,f.z),1-Math.exp(-10*dt));cam.lookAt(camL);
+ const f=busy&&busy.t==='boat'?swan.position:p,focusY=busy&&busy.t==='livingroom'?1.3:1.6,cp2=new T.Vector3(f.x+Math.sin(yaw)*Math.cos(pitch)*dist,Math.max(.6,f.y+Math.sin(pitch)*dist+1),f.z+Math.cos(yaw)*Math.cos(pitch)*dist);
+ camP.lerp(cp2,1-Math.exp(-9*dt));cam.position.copy(camP);camL.lerp(new T.Vector3(f.x,f.y+focusY,f.z),1-Math.exp(-10*dt));cam.lookAt(camL);
  sky.position.copy(cam.position);sun.position.set(p.x+22,45,p.z+18);sun.target.position.copy(p);
  stL+=((busy&&busy.t==='stage'?1:0)-stL)*Math.min(1,dt*2);stSpot.intensity=stL*2.4;stBeams.forEach((b,i)=>{b.material.opacity=stL*.17*(.7+.3*Math.sin(tt*2+i*2));b.rotation.z=Math.sin(tt*.8+i)*.1*stL});
  R.render(scene,cam)}
 setInterval(()=>{$('status').textContent=owner?(peer()?'💞 Your partner is here — only you can start the surprises.':'Solo mode: only your boy avatar is visible. Invite her via Share.'):'💞 Explore the garden — something special may happen…'},1000);
 requestAnimationFrame(loop);
 </script></body></html>
+<script async data-explicit-opt-in="true" data-deployment-id="dpl_FY6iMhWMZV9hoT2M3524norHALBi" src="https://vercel.live/_next-live/feedback/feedback.js"></script>
