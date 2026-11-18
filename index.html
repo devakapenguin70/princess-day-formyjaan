@@ -329,19 +329,64 @@ function music(){stopMusic()}
 function jingle(){try{ac();for(let i=0;i<5;i++){const o=AC.createOscillator(),g=AC.createGain();o.type='sine';o.frequency.value=1300+i*170;g.gain.setValueAtTime(.0001,AC.currentTime+.04*i);g.gain.exponentialRampToValueAtTime(.035,AC.currentTime+.04*i+.02);g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+.04*i+.18);o.connect(g);g.connect(mg);o.start(AC.currentTime+.04*i);o.stop(AC.currentTime+.04*i+.2)}}catch(e){}}
 $('bSnd').onclick=()=>{muted=!muted;$('bSnd').textContent=muted?'🔇':'🔊';if(mg)mg.gain.value=muted?0:.7;au.muted=muted};
 
-const TR=[];let plI=-1,plOn=false,DB;const au=new Audio();au.preload='auto';
-let lastRemoteMusic=0,remoteMusicUrl='';
-au.onended=()=>{if(busy&&busy.t==='stage'&&owner)endAct();else if(owner)plNext(1)};
-function plRender(){const l=$('plist');l.textContent='';TR.forEach((t,i)=>{const r=document.createElement('div');r.className='row'+(i===plI&&plOn?' on':'');const sp=document.createElement('span');sp.textContent=(i===plI&&plOn?'🎶 ':'')+t.n;r.appendChild(sp);r.onclick=()=>plPlay(i);const sb=document.createElement('button');sb.textContent='🎤';sb.title='Use for singing and dance';sb.style.opacity=i===stageI?1:.35;sb.onclick=e=>{e.stopPropagation();stageI=i;plRender();toast('Shared song selected for singing and dance: '+TR[i].n)};r.appendChild(sb);const x=document.createElement('button');x.textContent='✖';x.onclick=e=>{e.stopPropagation();plDel(i)};r.appendChild(x);l.appendChild(r)});$('plPlay').textContent=plOn?'⏸':'▶'}
-function plPlay(i){if(!owner)return;if(!TR.length)return toast('Add your music first 🎵');plI=Math.max(0,Math.min(i,TR.length-1));plOn=true;stopMusic();au.pause();const t=TR[plI];au.src=t.u;au.currentTime=0;au.play().catch(()=>toast('Tap play again to allow audio playback'));if(room&&t.shared){const startedAt=Date.now();room.presence({musicUrl:t.u,musicName:t.n,musicEvent:startedAt,musicStartedAt:startedAt,musicTime:0,musicPlaying:true})}plRender()}
-function plPause(){plOn=false;stopMusic();au.pause();if(room&&owner)room.presence({musicPlaying:false,musicEvent:Date.now()});plRender()}
-function playRemoteMusic(p){au.pause();au.src=p.musicUrl;au.load();const seekAndPlay=()=>{const elapsed=p.musicStartedAt?Math.max(0,(Date.now()-p.musicStartedAt)/1000):0;try{au.currentTime=Math.max(0,(p.musicTime||0)+elapsed)}catch(e){}au.play().catch(()=>toast('Tap the screen once to enable shared music'))};if(au.readyState>=1)seekAndPlay();else au.addEventListener('loadedmetadata',seekAndPlay,{once:true})}
+const MUSIC_BASE='https://lxpngmquwpyhsvyeukid.supabase.co/storage/v1/object/public/princess-day-music/';
+const musicUrl=path=>MUSIC_BASE+path.split('/').map(encodeURIComponent).join('/');
+const TR=[
+ {n:'Snowman — Sia',u:musicUrl('snowman.mp3'),shared:true,scene:'dance'},
+ {n:"Can't Take My Eyes Off You",u:musicUrl("can't take my eyes off you.mp3"),shared:true,scene:'stage'},
+ {n:'Dil Dardeh — Sukha',u:musicUrl('1794999091321-94e5a610-e0ee-4840-95bb-48c46ea6161c-Dil_Dardeh_-_Sukha_1_.mp3'),shared:true,scene:'explore'}
+];
+let plI=-1,plOn=false,DB;const au=new Audio();au.preload='auto';au.loop=true;
+let lastRemoteMusic=0,remoteMusicUrl='',remotePlayToken=0;
+au.onended=()=>{};
+function plRender(){
+ const l=$('plist');l.textContent='';
+ TR.forEach((t,i)=>{
+  const r=document.createElement('div');r.className='row'+(i===plI&&plOn?' on':'');
+  const sp=document.createElement('span');sp.textContent=(i===plI&&plOn?'🎶 ':'')+t.n;r.appendChild(sp);
+  const tag=document.createElement('small');tag.textContent=t.scene==='dance'?'💃 Dance':t.scene==='stage'?'🎤 Singing':t.scene==='explore'?'🌸 Background':'🎵 Added';tag.style.fontSize='11px';tag.style.opacity='.75';r.appendChild(tag);
+  r.onclick=()=>plPlay(i);
+  if(!t.scene){const x=document.createElement('button');x.textContent='✖';x.onclick=e=>{e.stopPropagation();plDel(i)};r.appendChild(x)}
+  l.appendChild(r)
+ });
+ $('plPlay').textContent=plOn?'⏸':'▶'
+}
+function plPlay(i,force=false){
+ if(!owner)return;
+ if(!TR.length)return toast('Add your music first 🎵');
+ plI=Math.max(0,Math.min(i,TR.length-1));
+ const t=TR[plI];
+ if(!force&&plOn&&!au.paused&&au.src===t.u){plRender();return}
+ plOn=true;au.pause();au.currentTime=0;au.src=t.u;au.loop=true;au.load();
+ const startedAt=Date.now();
+ au.play().catch(()=>toast('Tap the screen once to allow audio playback'));
+ if(room&&t.shared)room.presence({musicUrl:t.u,musicName:t.n,musicEvent:startedAt,musicStartedAt:startedAt,musicTime:0,musicPlaying:true});
+ plRender()
+}
+function plPause(){
+ plOn=false;au.pause();try{au.currentTime=0}catch(e){}
+ if(room&&owner)room.presence({musicPlaying:false,musicEvent:Date.now()});
+ plRender()
+}
+function playSceneMusic(scene,force=false){if(!owner)return;const i=TR.findIndex(t=>t.scene===scene);if(i>=0)plPlay(i,force)}
+function playRemoteMusic(p){
+ const token=++remotePlayToken,url=p.musicUrl;
+ au.pause();au.src=url;au.loop=true;au.load();remoteMusicUrl=url;
+ const seekAndPlay=()=>{
+  if(token!==remotePlayToken||au.src!==url)return;
+  let elapsed=p.musicStartedAt?Math.max(0,(Date.now()-p.musicStartedAt)/1000):0;
+  if(Number.isFinite(au.duration)&&au.duration>0)elapsed%=au.duration;
+  try{au.currentTime=Math.max(0,(p.musicTime||0)+elapsed)}catch(e){}
+  au.play().catch(()=>toast('Tap the screen once to enable shared music'))
+ };
+ if(au.readyState>=1)seekAndPlay();else au.addEventListener('loadedmetadata',seekAndPlay,{once:true})
+}
 function plNext(d){if(TR.length)plPlay(((plI<0?0:plI)+d+TR.length)%TR.length)}
 function plDel(i){const t=TR[i];if(i===plI)plPause();TR.splice(i,1);if(plI>i)plI--;if(stageI===i)stageI=0;else if(stageI>i)stageI--;try{if(t.id!=null)DB.transaction('s','readwrite').objectStore('s').delete(t.id)}catch(e){}plRender()}
 $('bPl').onclick=()=>{if(!owner)return;plRender();$('pl').style.display='flex'};$('plClose').onclick=()=>$('pl').style.display='none';$('plPlay').onclick=()=>plOn?plPause():plPlay(plI<0?0:plI);$('plPrev').onclick=()=>plNext(-1);$('plNext').onclick=()=>plNext(1);
 $('plFile').onchange=async e=>{const files=[...e.target.files];e.target.value='';if(!files.length)return;if(!sb)return toast('Music service is still connecting — try again in a moment');for(const f of files){if(!f.type.startsWith('audio/')){toast('Please choose an audio file');continue}if(f.size>50*1024*1024){toast(f.name+' is over the 50 MB limit');continue}toast('Uploading '+f.name+'…');try{const safe=f.name.replace(/[^a-zA-Z0-9._-]/g,'_').slice(-90)||'song';const path=Date.now()+'-'+(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2))+'-'+safe;const {data,error}=await sb.storage.from('princess-day-music').upload(path,f,{contentType:f.type||'audio/mpeg',cacheControl:'3600',upsert:false});if(error)throw error;const {data:pub}=sb.storage.from('princess-day-music').getPublicUrl(data.path);const t={n:f.name.replace(/\\.[^.]+$/,''),u:pub.publicUrl,shared:true,storagePath:data.path};TR.push(t);try{if(DB){const saved=DB.transaction('s','readwrite').objectStore('s').add({n:t.n,u:t.u,shared:true});saved.onsuccess=()=>t.id=saved.result}}catch(x){}toast(f.name+' is ready for both players 💗')}catch(err){console.error('Shared music upload:',err);toast('Upload failed: '+(err.message||'check Storage permissions'))}}plRender()};
 $('addMusicUrl').onclick=()=>{if(!owner)return;const u=$('musicUrl').value.trim();if(!/^https:\/\/\//i.test(u))return toast('Please enter a valid HTTPS audio link');TR.push({n:'Shared music '+(TR.length+1),u,shared:true});$('musicUrl').value='';plRender();toast('Shared music link added 💗')};
-try{const o=indexedDB.open('cw-songs-custom-only',1);o.onupgradeneeded=()=>o.result.createObjectStore('s',{autoIncrement:true});o.onsuccess=()=>{DB=o.result;try{DB.transaction('s').objectStore('s').openCursor().onsuccess=e=>{const c=e.target.result;if(c){TR.push(c.value.shared&&c.value.u?{n:c.value.n,u:c.value.u,shared:true,id:c.key}:{n:c.value.n,u:URL.createObjectURL(c.value.b),shared:false,id:c.key});c.continue()}else plRender()}}catch(x){}}}catch(e){}
+try{const o=indexedDB.open('cw-songs-custom-only',1);o.onupgradeneeded=()=>o.result.createObjectStore('s',{autoIncrement:true});o.onsuccess=()=>{DB=o.result;try{DB.transaction('s').objectStore('s').openCursor().onsuccess=e=>{const c=e.target.result;if(c){const item=c.value.shared&&c.value.u?{n:c.value.n,u:c.value.u,shared:true,id:c.key}:{n:c.value.n,u:URL.createObjectURL(c.value.b),shared:false,id:c.key};if(!TR.some(t=>t.u===item.u))TR.push(item);c.continue()}else plRender()}}catch(x){}}}catch(e){}
 // state
 let started=false,defRole='boy',pick=null,stL=0;
 let myRole='boy',me=boy,ot=girl,room=null,want=null,wantT=0,busy=null,fin=null,spin=0,bounce=0,near=null,ptT=0,partnerSeen=false;
@@ -404,6 +449,7 @@ room={
         await sbChannel.track({...localPresence,clientId,joinedAt,owner});
         roomReady=true;rebuildRemotePeers();applyNetworkRole();
         room.presence({displayName:myName});
+        if(started&&owner)playSceneMusic('explore',true);
       }else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED'){
         roomReady=false;$('status').textContent='⚠️ Multiplayer connection issue — check your Supabase project settings and internet.';
       }
@@ -417,7 +463,7 @@ function pickRole(r){if(takenBy(r)){toast('Your partner is already using that ch
 $('pB').onclick=()=>pickRole('boy');$('pG').onclick=()=>pickRole('girl');$('displayName').value=myName;
 $('displayName').addEventListener('input',e=>{myName=(e.target.value||'').trim().slice(0,18);try{localStorage.setItem('ourWorldDisplayName',myName)}catch(x){}$('go').disabled=!(pick&&myName);refreshPrincessName();if(started&&room)room.presence({displayName:myName})});
 function tryFS(){try{const r=document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen();if(r&&r.catch)r.catch(()=>{});if(screen.orientation&&screen.orientation.lock)screen.orientation.lock('landscape').catch(()=>{})}catch(e){}}
-$('go').onclick=()=>{myName=$('displayName').value.trim().slice(0,18);if(!pick||!myName||takenBy(pick))return;try{localStorage.setItem('ourWorldDisplayName',myName)}catch(e){}setRole(pick);started=true;document.body.classList.add('on');document.body.classList.toggle('guest',!owner);document.body.classList.toggle('owner',owner);$('intro').style.opacity=0;setTimeout(()=>$('intro').style.display='none',800);if(!document.fullscreenElement)tryFS();toast(PQ[Math.floor(rnd()*PQ.length)]);rs()};
+$('go').onclick=()=>{myName=$('displayName').value.trim().slice(0,18);if(!pick||!myName||takenBy(pick))return;try{localStorage.setItem('ourWorldDisplayName',myName)}catch(e){}setRole(pick);started=true;document.body.classList.add('on');document.body.classList.toggle('guest',!owner);document.body.classList.toggle('owner',owner);$('intro').style.opacity=0;setTimeout(()=>$('intro').style.display='none',800);if(!document.fullscreenElement)tryFS();toast(PQ[Math.floor(rnd()*PQ.length)]);if(owner)playSceneMusic('explore');rs()};
 
 setInterval(()=>{['boy','girl'].forEach(r=>{const t=takenBy(r);$(r==='boy'?'pB':'pG').classList.toggle('taken',t);$(r==='boy'?'tB':'tG').textContent=t?'your partner is this one':''});},800);
 setInterval(()=>{if(started)return;const e=document.createElement('span');e.className='cf';e.textContent=['✨','💖','💫','🌸','⭐'][Math.floor(rnd()*5)];e.style.left=rnd()*100+'vw';e.style.animationDuration=4+rnd()*4+'s';e.style.fontSize=14+rnd()*20+'px';$('intro').appendChild(e);setTimeout(()=>e.remove(),8000)},350);
@@ -432,17 +478,18 @@ function pointArm(o,arm,tg){o.updateMatrixWorld(true);arm.getWorldPosition(_v);_
 const pj=new T.Group();pj.add(new T.Mesh(new T.TorusGeometry(.09,.02,6,16),M(0xffd24a)));for(let i=0;i<6;i++){const a=i/6*PI*2;add(S(.025,0xfff0a0,1,1,1,6),Math.cos(a)*.09,Math.sin(a)*.09,0,pj)}pj.visible=false;scene.add(pj);
 const fb=new Uint8Array(128);function lvl(){const a=(plOn&&TR[plI]&&!TR[plI].s)?anA:anS;if(!a)return .4+.3*Math.sin(tt*9);a.getByteFrequencyData(fb);let sm=0;for(let i=0;i<20;i++)sm+=fb[i];const v=Math.min(1,sm/20/150);return v>.02?v:.15+.15*Math.abs(Math.sin(tt*7))}
 const ang=(a,b,k)=>{let x=b-a;while(x>PI)x-=2*PI;while(x<-PI)x+=2*PI;return a+x*k};
-const DUR={dance:40,bench:34,boat:58,prop:999,payal:20,stage:70,ferris:65,livingroom:110};let camT=null,lastEnd=-99,stageI=0;
+const DUR={dance:40,bench:34,boat:58,prop:999,payal:20,stage:70,ferris:65,livingroom:110};let camT=null,lastEnd=-99,stageI=1;
 const CAMS={prop:{y:PI/2,p:.22,d:8.5},payal:{y:.3,p:.25,d:7.5},bench:{y:.5,p:.25,d:8},stage:{y:.9,p:.2,d:11},ferris:{y:.2,p:.28,d:13.5},livingroom:{y:.55,p:.14,d:5.8}};
 function actMusic(s){/* Built-in soundtrack removed; use the owner's custom playlist. */}
 function startAct(t){want=null;const remote=peer(),actStartedAt=owner?Date.now():((remote&&remote.presence&&remote.presence.actStartedAt)||Date.now());busy={t,k:!owner&&remote&&remote.presence&&remote.presence.actStartedAt?Math.max(0,(Date.now()-remote.presence.actStartedAt)/1000):0,d:DUR[t],s:{},bt:{},bl:{},wk:{},yes:0,actStartedAt,syncedStartAt:actStartedAt};camT=CAMS[t]||null;let sg=null;
- if(t==='dance'&&owner){const tr=TR.find(x=>x.shared&&/snowman/i.test(x.n))||(TR[stageI]&&TR[stageI].shared?TR[stageI]:TR.find(x=>x.shared));if(tr){stageI=TR.indexOf(tr);busy.danceSong=stageI;busy.song=1;sg=tr.u}else busy.danceSong=-1}
- if(t==='stage'){const o=peer();if(owner){const tr=TR[stageI]||TR[0];sg=tr?(tr.shared?tr.u:'custom'):null;busy.d=tr?70:35;busy.sI=tr?stageI:-1}else{sg=(o&&o.presence.sg)||null;busy.sI=Math.max(0,TR.findIndex(x=>x.shared&&x.u===sg))}busy.song=1}
+ if(t==='dance'&&owner){const tr=TR.find(x=>x.scene==='dance')||TR.find(x=>/snowman/i.test(x.n));if(tr){busy.danceSong=TR.indexOf(tr);busy.song=1;sg=tr.u}else busy.danceSong=-1}
+ if(t==='stage'){const o=peer();if(owner){const tr=TR.find(x=>x.scene==='stage')||TR[stageI]||TR[0];sg=tr?(tr.shared?tr.u:'custom'):null;busy.d=tr?70:35;busy.sI=tr?TR.indexOf(tr):-1}else{sg=(o&&o.presence.sg)||null;busy.sI=Math.max(0,TR.findIndex(x=>x.shared&&x.u===sg))}busy.song=1}
  if(room)room.presence({act:t,actStartedAt,ans:null,answerChoice:null,sg});
- if(t==='stage'){if(owner&&busy.sI>=0)plPlay(busy.sI);toast(TR.length?'🎤 A song just for you…':'🎤 Add your custom music to play a song here')}
- if(t==='dance'){if(owner&&busy.danceSong>=0)plPlay(busy.danceSong);toast(owner&&busy.danceSong>=0?'A 40-second slow dance is starting with your shared Snowman track 💃🕺':'A 40-second slow waltz for two 💃🕺')}if(t==='bench'){actMusic('soft');toast(q())}if(t==='boat'){actMusic('flow');toast('Sit back — the swan will take you around the lake 🦢')}if(t==='payal'){actMusic('soft');toast('A little surprise at her feet… 💎')}if(t==='prop'){ring.visible=true;hearts(10)}}
+ if(owner)playSceneMusic(t==='dance'?'dance':t==='stage'?'stage':'explore');
+ if(t==='stage'){toast(TR.some(x=>x.scene==='stage')?'🎤 A song just for you…':'🎤 Add your custom music to play a song here')}
+ if(t==='dance'){toast(TR.some(x=>x.scene==='dance')?'A 40-second slow dance is starting with Snowman 💃🕺':'A 40-second slow waltz for two 💃🕺')}if(t==='bench'){actMusic('soft');toast(q())}if(t==='boat'){actMusic('flow');toast('Sit back — the swan will take you around the lake 🦢')}if(t==='payal'){actMusic('soft');toast('A little surprise at her feet… 💎')}if(t==='prop'){ring.visible=true;hearts(10)}}
 function yesNow(choice){if(!busy||busy.yes)return;busy.yes=1;busy.answerChoice=choice||1;busy.ky=busy.k;fin={k:0,fw:0};nt=1;hearts(34);toast(busy.answerChoice===2?'She said “Of course I do!” 💖':'She said “I love you too!” ❤️');actMusic('soft');ring.visible=false}
-function endAct(keep){if(!busy)return;const t=busy.t,sg=busy.song;busy=null;camT=null;lastEnd=tt;if(room)room.presence({act:null,actStartedAt:null,ans:null,answerChoice:null,sg:null});if(!keep&&!plOn)stopMusic();if(sg)plPause();ring.visible=false;mic.visible=false;pj.visible=false;[boy,girl].forEach(o=>{o.userData.mouth.visible=false;o.userData.sm.visible=true});
+function endAct(keep){if(!busy)return;const t=busy.t,sg=busy.song;busy=null;camT=null;lastEnd=tt;if(room)room.presence({act:null,actStartedAt:null,ans:null,answerChoice:null,sg:null});if(owner)playSceneMusic('explore');ring.visible=false;mic.visible=false;pj.visible=false;[boy,girl].forEach(o=>{o.userData.mouth.visible=false;o.userData.sm.visible=true});
  if(t==='boat'){me.position.set(-.5,0,22);ot.position.set(.6,0,23);swan.position.set(4,.1,27);swan.rotation.y=0}$('stop').style.display='none'}
 const spots=[
  {x:-10,z:-12,r:4.5,l:'🌹 Stand under the arch',f(){hearts(14);toast(q())}},
