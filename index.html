@@ -412,7 +412,19 @@ function applyNetworkRole(){
 function upsertRemotePeer(payload){
   if(!payload||!payload.clientId||payload.clientId===clientId)return;
   const i=remotePeers.findIndex(p=>p.presence.clientId===payload.clientId);
-  const item={isMe:false,kind:'viewer',presence:payload,seenAt:Date.now()};
+  const previous=i>=0?remotePeers[i].presence:null;
+  let incoming=payload;
+  if(previous&&Number(previous.positionSeq)>0){
+    const oldSeq=Number(previous.positionSeq);
+    const newSeq=Number(payload.positionSeq);
+    const oldAt=Number(previous.positionAt)||0;
+    const newAt=Number(payload.positionAt)||0;
+    // Presence sync/state packets can arrive after a newer movement packet.
+    // Keep the newest position even when an older snapshot arrives late.
+    const stale=!Number.isFinite(newSeq)||newSeq<oldSeq||(newSeq===oldSeq&&newAt<oldAt);
+    if(stale)incoming={...payload,x:previous.x,y:previous.y,z:previous.z,ry:previous.ry,positionSeq:previous.positionSeq,positionAt:previous.positionAt};
+  }
+  const item={isMe:false,kind:'viewer',presence:incoming,seenAt:Date.now()};
   if(i<0)remotePeers.push(item);else remotePeers[i]=item;
 }
 function rebuildRemotePeers(){
