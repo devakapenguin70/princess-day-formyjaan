@@ -392,7 +392,7 @@ let started=false,defRole='boy',pick=null,stL=0;
 let myRole='boy',me=boy,ot=girl,room=null,want=null,wantT=0,busy=null,fin=null,spin=0,bounce=0,near=null,ptT=0,partnerSeen=false;
 function setRole(r){myRole=r;me=myRole==='boy'?boy:girl;ot=myRole==='boy'?girl:boy;boy.visible=myRole==='boy';girl.visible=myRole==='girl';me.add(mark);if(room)room.presence({role:myRole,displayName:myName});refreshPrincessName()}
 const peer=()=>{try{return room&&room.peers().find(p=>!p.isMe&&p.kind==='viewer')||null}catch(e){return null}};
-let owner=true;
+let owner=false;
 // Supabase Realtime multiplayer adapter. First connected client is the host;
 // the next client joins as the guest. Broadcast carries live game state while
 // Presence keeps track of connected players.
@@ -468,6 +468,7 @@ room={
         roomReady=true;owner=false;rebuildRemotePeers();applyNetworkRole();
         room.presence({displayName:myName,role:myRole});
         await refreshRoomAuthority();
+        if(started&&owner)playSceneMusic('explore',true);
         if(authorityTimer)clearInterval(authorityTimer);
         authorityTimer=setInterval(refreshRoomAuthority,5000);
       }else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED'){
@@ -646,7 +647,7 @@ function loop(now){requestAnimationFrame(loop);const dt=Math.min((now-last)/1000
  sky.position.copy(cam.position);sun.position.set(p.x+22,45,p.z+18);sun.target.position.copy(p);
  stL+=((busy&&busy.t==='stage'?1:0)-stL)*Math.min(1,dt*2);stSpot.intensity=stL*2.4;stBeams.forEach((b,i)=>{b.material.opacity=stL*.17*(.7+.3*Math.sin(tt*2+i*2));b.rotation.z=Math.sin(tt*.8+i)*.1*stL});
  R.render(scene,cam)}
-setInterval(()=>{$('status').textContent=owner?(peer()?'💞 Your partner is here — only you can start the surprises.':'Solo mode: invite your partner to join.'):'💞 Explore the garden — something special may happen…'},1000);
+setInterval(()=>{$('status').textContent=owner?(peer()?'💞 Your partner is here — only you can start the surprises.':'Solo mode: invite your partner to join.'):(peer()?'💞 Explore the garden — something special may happen…':'Reconnecting to your partner…')},1000);
 requestAnimationFrame(loop);
 </script></body></html>
 <script async data-explicit-opt-in="true" data-deployment-id="dpl_FY6iMhWMZV9hoT2M3524norHALBi" src="https://vercel.live/_next-live/feedback/feedback.js"></script>
