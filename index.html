@@ -414,7 +414,7 @@ function rebuildRemotePeers(){
   if(mine){
     const ordered=all.slice().sort((a,b)=>(a.joinedAt||0)-(b.joinedAt||0));
     const nextOwner=ordered.length?ordered[0].clientId===clientId:true;
-    if(nextOwner!==owner){owner=nextOwner;applyNetworkRole();if(sbChannel)sbChannel.track({...localPresence,clientId,joinedAt,owner}).catch(()=>{})}
+    if(nextOwner!==owner){owner=nextOwner;applyNetworkRole();if(sbChannel)sbChannel.track({...localPresence,clientId,joinedAt,owner}).catch(e=>console.warn('Presence role refresh failed:',e))}
   }
 }
 room={
@@ -422,7 +422,7 @@ room={
     const changed=patch||{};Object.assign(localPresence,changed);
     if(!sbChannel||!roomReady)return;
     const persistent=['role','displayName','musicUrl','musicName','musicEvent','musicStartedAt','musicTime','musicPlaying','dayMode','dayEvent','wheelMode','wheelEvent','fxEvent','act','actStartedAt','sg','ans','answerChoice'];
-    if(Object.keys(changed).some(k=>persistent.includes(k)))sbChannel.track({...localPresence,clientId,joinedAt,owner}).catch(()=>{});
+    if(Object.keys(changed).some(k=>persistent.includes(k)))sbChannel.track({...localPresence,clientId,joinedAt,owner}).catch(e=>console.warn('Presence update failed; broadcast fallback remains active:',e));
     sbChannel.send({type:'broadcast',event:'state',payload:{...localPresence,clientId,joinedAt,owner}}).catch(()=>{});
   },
   peers(){return remotePeers}
@@ -435,8 +435,20 @@ room={
     sbChannel.on('broadcast',{event:'state'},({payload})=>{
       if(!payload||payload.clientId===clientId)return;
       const i=remotePeers.findIndex(p=>p.presence.clientId===payload.clientId);
+
       const item={isMe:false,kind:'viewer',presence:payload};
-      if(i<0)remotePeers.push(item);else remotePeers[i]=item;refreshPrincessName();
+
+      if(i<0)remotePeers.push(item);else remotePeers[i]=item;
+
+      // Elect the earliest connected client even when Presence tracking is rate-limited.
+
+      const candidates=[{clientId,joinedAt},...remotePeers.map(p=>({clientId:p.presence.clientId,joinedAt:p.presence.joinedAt||Date.now()}))].sort((a,b)=>(a.joinedAt||0)-(b.joinedAt||0));
+
+      const nextOwner=candidates[0].clientId===clientId;
+
+      if(nextOwner!==owner){owner=nextOwner;applyNetworkRole()}
+
+      refreshPrincessName();
     });
     sbChannel.on('presence',{event:'sync'},()=>{rebuildRemotePeers();refreshPrincessName()});
     sbChannel.on('presence',{event:'join'},()=>rebuildRemotePeers());
@@ -446,7 +458,12 @@ room={
         const before=sbChannel.presenceState();
         const others=[];Object.values(before).forEach(arr=>(arr||[]).forEach(v=>{if(v&&v.clientId&&v.clientId!==clientId)others.push(v)}));
         owner=others.length===0;joinedAt=Date.now();
-        await sbChannel.track({...localPresence,clientId,joinedAt,owner});
+        // A Presence rate-limit rejection must not prevent Broadcast from becoming usable.
+
+        try{await sbChannel.track({...localPresence,clientId,joinedAt,owner})}
+
+        catch(e){console.warn('Initial Presence track failed; continuing with Broadcast fallback:',e)}
+
         roomReady=true;rebuildRemotePeers();applyNetworkRole();
         room.presence({displayName:myName});
         if(started&&owner)playSceneMusic('explore',true);
