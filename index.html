@@ -240,7 +240,7 @@ function person(girl){const g=new T.Group(),h=new T.Group(),sk=0xffe0cc,hr=0x2b1
  {const ms=[];g.traverse(m=>{if(m.isMesh&&m.name!=='f')ms.push(m)});ms.forEach(m=>{const o=new T.Mesh(m.geometry,OL);o.scale.setScalar(1.06);m.add(o)})}
  scene.add(g);g.userData={h,AL,AR,LL,RL,sm,mouth:mo};return g}
 const boy=person(0),girl=person(1);
-const mic=new T.Group();{const m1=C(.03,.035,.2,0x2b2b33,8);m1.position.y=-.1;const m2=S(.065,0xc9ccd6,1,1,1,12);m2.position.y=-.22;mic.add(m1,m2);boy.userData.AR.userData.hand.add(mic);mic.visible=false}
+const mic=new T.Group();{const handle=mesh(new T.CylinderGeometry(.045,.055,.34,12),0x292b35);handle.position.y=-.18;mic.add(handle);const head=mesh(new T.SphereGeometry(.115,16,12),0xbfc5d0);head.scale.set(.88,1.08,.88);head.position.y=-.405;mic.add(head);const band=mesh(new T.CylinderGeometry(.105,.105,.055,16),0x343640);band.position.y=-.31;mic.add(band);for(let i=0;i<3;i++){const ring=new T.Mesh(new T.TorusGeometry(.091,.009,6,18),M(0x737987));ring.rotation.x=PI/2;ring.position.y=-.39-i*.035;mic.add(ring)}mic.position.set(0,-.015,.015);boy.userData.AR.userData.hand.add(mic);mic.visible=false}
 const OBS=[[11,-16,4.3],[-14,4,1.9],[-20,-28,3.7],[22,-34,6.4],[22,-29.2,1.4],[-5,-5,2.4],[0,-42,3],[-10,-12,2.7]];
 function avoid(g){const x=g.position;OBS.forEach(o=>{const dx=x.x-o[0],dz=x.z-o[1],d=Math.hypot(dx,dz)||.01;if(d<o[2]){x.x=o[0]+dx/d*o[2];x.z=o[1]+dz/d*o[2]}});if(x.z>16.3&&Math.abs(x.x)>1.8)x.z=16.3;if(x.z<-50)x.z=-50;x.x=Math.max(-52,Math.min(52,x.x))}
 function makeCat(){const g=new T.Group(),body=new T.Group(),O=0xd98a3d,D=0x9c5418,W=0xf7ead8;g.add(body);body.position.y=.5;
@@ -320,7 +320,7 @@ const fw=[];function burst(x,y,z,heart){const n=90,pos=new Float32Array(n*3),vel
 // ui
 const toast=t=>{const e=$('toast');e.textContent=t;e.style.opacity=1;clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.opacity=0,3500)};
 const hearts=(n=10)=>{for(let i=0;i<n;i++){const s=document.createElement('span');s.className='h';s.textContent=['💗','💖','💕','🌸'][i%4];s.style.left=(25+rnd()*50)+'vw';s.style.animationDelay=rnd()*.5+'s';document.body.appendChild(s);setTimeout(()=>s.remove(),3000)}};
-function card(t,p,inp,b1,b2,cb){$('ct').textContent=t;$('cp').textContent=p;$('ci').style.display=inp?'':'none';$('ci').value='';$('cb').textContent=b1;$('cb2').textContent=b2||'';$('cb2').style.display=b2?'':'none';$('card').style.display='flex';$('cb').onclick=$('cb2').onclick=()=>{$('card').style.display='none';cb&&cb($('ci').value)}}
+function card(t,p,inp,b1,b2,cb){$('ct').textContent=t;$('cp').textContent=p;$('ci').style.display=inp?'':'none';$('ci').value='';$('cb').textContent=b1;$('cb2').textContent=b2||'';$('cb2').style.display=b2?'':'none';$('card').style.display='flex';$('cb').onclick=()=>{$('card').style.display='none';cb&&cb($('ci').value,1)};$('cb2').onclick=()=>{$('card').style.display='none';cb&&cb($('ci').value,2)}}
 // Custom music only — no built-in soundtrack.
 let AC,mg,muted=false,anS,anA,auSrc;let mus=null;
 function stopMusic(){mus=null}
@@ -378,7 +378,7 @@ room={
   presence(patch){
     const changed=patch||{};Object.assign(localPresence,changed);
     if(!sbChannel||!roomReady)return;
-    const persistent=['role','displayName','musicUrl','musicName','musicEvent','musicStartedAt','musicTime','musicPlaying','dayMode','dayEvent','wheelMode','wheelEvent','fxEvent','act','sg','ans'];
+    const persistent=['role','displayName','musicUrl','musicName','musicEvent','musicStartedAt','musicTime','musicPlaying','dayMode','dayEvent','wheelMode','wheelEvent','fxEvent','act','actStartedAt','sg','ans','answerChoice'];
     if(Object.keys(changed).some(k=>persistent.includes(k)))sbChannel.track({...localPresence,clientId,joinedAt,owner}).catch(()=>{});
     sbChannel.send({type:'broadcast',event:'state',payload:{...localPresence,clientId,joinedAt,owner}}).catch(()=>{});
   },
@@ -437,13 +437,14 @@ const ang=(a,b,k)=>{let x=b-a;while(x>PI)x-=2*PI;while(x<-PI)x+=2*PI;return a+x*
 const DUR={dance:40,bench:34,boat:58,prop:999,payal:20,stage:70,ferris:65,livingroom:110};let camT=null,lastEnd=-99,stageI=0;
 const CAMS={prop:{y:PI/2,p:.22,d:8.5},payal:{y:.3,p:.25,d:7.5},bench:{y:.5,p:.25,d:8},stage:{y:.9,p:.2,d:11},ferris:{y:.2,p:.28,d:13.5},livingroom:{y:.55,p:.14,d:5.8}};
 function actMusic(s){/* Built-in soundtrack removed; use the owner's custom playlist. */}
-function startAct(t){want=null;busy={t,k:0,d:DUR[t],s:{},bt:{},bl:{},wk:{},yes:0};camT=CAMS[t]||null;let sg=null;
+function startAct(t){want=null;const remote=peer(),actStartedAt=owner?Date.now():((remote&&remote.presence&&remote.presence.actStartedAt)||Date.now());busy={t,k:!owner&&remote&&remote.presence&&remote.presence.actStartedAt?Math.max(0,(Date.now()-remote.presence.actStartedAt)/1000):0,d:DUR[t],s:{},bt:{},bl:{},wk:{},yes:0,actStartedAt,syncedStartAt:actStartedAt};camT=CAMS[t]||null;let sg=null;
+ if(t==='dance'&&owner){const tr=TR.find(x=>x.shared&&/snowman/i.test(x.n))||(TR[stageI]&&TR[stageI].shared?TR[stageI]:TR.find(x=>x.shared));if(tr){stageI=TR.indexOf(tr);busy.danceSong=stageI;busy.song=1;sg=tr.u}else busy.danceSong=-1}
  if(t==='stage'){const o=peer();if(owner){const tr=TR[stageI]||TR[0];sg=tr?(tr.shared?tr.u:'custom'):null;busy.d=tr?70:35;busy.sI=tr?stageI:-1}else{sg=(o&&o.presence.sg)||null;busy.sI=Math.max(0,TR.findIndex(x=>x.shared&&x.u===sg))}busy.song=1}
- if(room)room.presence({act:t,ans:null,sg});
+ if(room)room.presence({act:t,actStartedAt,ans:null,answerChoice:null,sg});
  if(t==='stage'){if(owner&&busy.sI>=0)plPlay(busy.sI);toast(TR.length?'🎤 A song just for you…':'🎤 Add your custom music to play a song here')}
- if(t==='dance'){actMusic('waltz');toast('A slow waltz for two 💃🕺')}if(t==='bench'){actMusic('soft');toast(q())}if(t==='boat'){actMusic('flow');toast('Sit back — the swan will take you around the lake 🦢')}if(t==='payal'){actMusic('soft');toast('A little surprise at her feet… 💎')}if(t==='prop'){ring.visible=true;hearts(10)}}
-function yesNow(){if(!busy||busy.yes)return;busy.yes=1;busy.ky=busy.k;fin={k:0,fw:0};nt=1;hearts(34);toast(q());actMusic('soft');ring.visible=false}
-function endAct(keep){if(!busy)return;const t=busy.t,sg=busy.song;busy=null;camT=null;lastEnd=tt;if(room)room.presence({act:null,ans:null,sg:null});if(!keep&&!plOn)stopMusic();if(sg)plPause();ring.visible=false;mic.visible=false;pj.visible=false;[boy,girl].forEach(o=>{o.userData.mouth.visible=false;o.userData.sm.visible=true});
+ if(t==='dance'){if(owner&&busy.danceSong>=0)plPlay(busy.danceSong);toast(owner&&busy.danceSong>=0?'A 40-second slow dance is starting with your shared Snowman track 💃🕺':'A 40-second slow waltz for two 💃🕺')}if(t==='bench'){actMusic('soft');toast(q())}if(t==='boat'){actMusic('flow');toast('Sit back — the swan will take you around the lake 🦢')}if(t==='payal'){actMusic('soft');toast('A little surprise at her feet… 💎')}if(t==='prop'){ring.visible=true;hearts(10)}}
+function yesNow(choice){if(!busy||busy.yes)return;busy.yes=1;busy.answerChoice=choice||1;busy.ky=busy.k;fin={k:0,fw:0};nt=1;hearts(34);toast(busy.answerChoice===2?'She said “Absolutely yes!” 💖':'She said “Yes!” ❤️');actMusic('soft');ring.visible=false}
+function endAct(keep){if(!busy)return;const t=busy.t,sg=busy.song;busy=null;camT=null;lastEnd=tt;if(room)room.presence({act:null,actStartedAt:null,ans:null,answerChoice:null,sg:null});if(!keep&&!plOn)stopMusic();if(sg)plPause();ring.visible=false;mic.visible=false;pj.visible=false;[boy,girl].forEach(o=>{o.userData.mouth.visible=false;o.userData.sm.visible=true});
  if(t==='boat'){me.position.set(-.5,0,22);ot.position.set(.6,0,23);swan.position.set(4,.1,27);swan.rotation.y=0}$('stop').style.display='none'}
 const spots=[
  {x:-10,z:-12,r:4.5,l:'🌹 Stand under the arch',f(){hearts(14);toast(q())}},
@@ -466,7 +467,7 @@ const wheelSpeeds=[0,.12,.22,.42],wheelLabels=['stopped','gentle','classic','spa
 function setDayMode(v,send=true){dayMode=v?1:0;nt=dayMode;$('bDay').textContent=dayMode?'🌙':'☀️';$('bDay').title=dayMode?'Admin: switch to daytime':'Admin: switch to nighttime';if(send&&owner&&room)room.presence({dayMode,dayEvent:Date.now()});toast(dayMode?'A dreamy night for our castle ✨':'Sunlight is back in our kingdom ☀️')}
 $('bDay').onclick=()=>{if(owner)setDayMode(dayMode?0:1)};
 $('bWheel').onclick=()=>{if(!owner)return;wheelMode=(wheelMode+1)%wheelSpeeds.length;wheelSpeed=wheelSpeeds[wheelMode];$('bWheel').title='Admin: Ferris wheel speed — '+wheelLabels[wheelMode];if(room)room.presence({wheelMode,wheelEvent:Date.now()});toast('Ferris wheel: '+wheelLabels[wheelMode]+' 🎡')};
-function act(){if(!owner||busy||!near)return;if(near.f){near.f();return}want=near.c;wantT=tt;const o=peer();if(room)room.presence({act:want});if(o)toast('Waiting for her to come close… 💞')}
+function act(){if(!owner||busy||!near)return;if(near.f){near.f();return}want=near.c;wantT=tt;const o=peer();if(room)room.presence({act:want,actStartedAt:0});if(o)toast('Waiting for her to come close… 💞')}
 $('act').onclick=act;$('stop').onclick=()=>{if(busy&&busy.t!=='prop')endAct()};
 // input
 const keys={};addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=1;if((e.key==='Enter'||e.key===' ')&&$('card').style.display!=='flex')act()});addEventListener('keyup',e=>keys[e.key.toLowerCase()]=0);
@@ -504,12 +505,21 @@ function loop(now){requestAnimationFrame(loop);const dt=Math.min((now-last)/1000
  // wanting a coop act
  if(want&&!busy){const sp=spots.find(s=>s.c===want),oo=peer();if(!oo){startAct(want)}else if(oo.presence.act===want&&Math.hypot(oo.presence.x-sp.x,oo.presence.z-sp.z)<sp.r+4)startAct(want);else if(tt-wantT>30){want=null;if(room)room.presence({act:null});toast('She didn’t reach the spot — try again when she’s close 💞')}}
  if(!owner&&!busy&&o&&o.presence.act&&tt-lastEnd>6){const sp=spots.find(s=>s.c===o.presence.act);if(sp&&Math.hypot(p.x-sp.x,p.z-sp.z)<sp.r+4)startAct(o.presence.act)}
+ if(!owner&&busy&&o&&o.presence.actStartedAt&&busy.syncedStartAt!==o.presence.actStartedAt){busy.k=Math.max(0,(Date.now()-o.presence.actStartedAt)/1000);busy.syncedStartAt=o.presence.actStartedAt}
  if(!owner&&busy&&busy.k>3&&o&&!o.presence.act)endAct(busy.t==='prop')
  // activities
  if(busy){busy.k+=dt;walkP(boy,0);walkP(girl,0);const k=busy.k,bu=boy.userData,gu=girl.userData,t=busy.t;
-  if(t==='dance'){const c={x:11,z:-16},cw=k*.35,a=k*.9,ox=Math.cos(a)*1.25,oz=Math.sin(a)*1.25,cx=c.x+Math.cos(cw)*1.7,cz=c.z+Math.sin(cw)*1.7,bob=.06+.1*Math.max(0,Math.sin(k*2*PI/(3*.72)));
-   put(boy,cx+ox,.35+bob,cz+oz,Math.atan2(-ox,-oz));put(girl,cx-ox,.35+bob,cz-oz,Math.atan2(ox,oz));bu.AL.rotation.x=bu.AR.rotation.x=gu.AL.rotation.x=gu.AR.rotation.x=-1.25;boy.rotation.z=.05*Math.sin(k*3);girl.rotation.z=-.05*Math.sin(k*3);
-   if(k>busy.d-6&&k<busy.d-2.5){boy.rotation.x=.35;girl.rotation.x=-.55;girl.position.y-=.1}if(k>busy.d-2.5&&Math.floor(k*3)%7===0&&rnd()<.1)hearts(2)}
+  if(t==='dance'){const cx=11,cz=-16;let bx=-1.25,bz=0,gx=1.25,gz=0,gy=.35;const bob=.045+.055*Math.sin(k*4.2),sway=Math.sin(k*2.1)*.08;
+   if(k<6){const e=ease(k/6);bx=-1.25+e*.12;gx=1.25-e*.12;bz=sway*.35;gz=-sway*.35}
+   else if(k<17){const a=(k-6)*.38;bx=Math.cos(a)*1.15;bz=Math.sin(a)*.78;gx=-bx;gz=-bz}
+   else if(k<25){const e=ease((k-17)/8);bx=-.7+e*1.4;bz=-.18+sway*.3;gx=bx+.95;gz=-.18+sway*.3}
+   else if(k<33){const a=(k-25)*.78;bx=-.55;bz=0;gx=.55+Math.cos(a)*.95;gz=Math.sin(a)*.95}
+   else if(k<37){const e=ease((k-33)/4);bx=-.55;bz=0;gx=.55;gz=0;gy=.35-.34*Math.sin(e*PI)}
+   else{bx=-.55;gx=.55;bz=gz=0}
+   const face=Math.atan2(gx-bx,gz-bz);put(boy,cx+bx,.35+bob,cz+bz,face);put(girl,cx+gx,gy+bob,cz+gz,face+PI);
+   const dip=k>=33&&k<37?Math.sin(ease((k-33)/4)*PI):0;bu.AL.rotation.set(-1.1+sway,0,.38);bu.AR.rotation.set(-1.1-sway,0,-.38);gu.AL.rotation.set(-1.05-sway,0,.38);gu.AR.rotation.set(-1.05+sway,0,-.38);bu.h.rotation.z=.035*Math.sin(k*2);gu.h.rotation.z=-.04*Math.sin(k*2+.4);boy.rotation.z=.035*Math.sin(k*2.2);girl.rotation.z=-.035*Math.sin(k*2.2);boy.rotation.x=.08*dip;girl.rotation.x=-.48*dip;
+   if(k>37){const finish=ease(Math.min(1,(k-37)/2));boy.rotation.x*=1-finish;girl.rotation.x*=1-finish;bu.h.rotation.z*=1-finish;gu.h.rotation.z*=1-finish}
+   if(k>9&&Math.floor(k*1.4)%13===0)hearts(1)}
   if(t==='bench'){put(boy,-6.1,-.04,-5,0);put(girl,-3.9,-.04,-5,0);sit(boy);sit(girl);const e=ease(Math.min(1,Math.max(0,(k-3)/3)));gu.h.rotation.z=.5*e;gu.h.position.x=-.1*e;girl.rotation.z=.08*e;bu.h.rotation.z=.12*e;bu.h.position.x=-.06*e;bu.AL.rotation.set(-.2,0,.9*e);if(k<8)bloomB.grow(ease(Math.min(1,Math.max(0,(k-2)/5))));if(Math.floor(k)%6===3&&rnd()<.05)hearts(3)}
   if(t==='payal'){put(girl,-20,.1,-29.3,0);put(boy,-19,.05,-28.5,-PI/2);sit(girl);kneel2(boy);const rb=rdy(boy),rg=rdy(girl);
    if(rg){gu.h.rotation.x=.16;gu.AL.rotation.set(-.6,0,-.15);gu.AR.rotation.set(-.6,0,.15)}
@@ -544,8 +554,8 @@ function loop(now){requestAnimationFrame(loop);const dt=Math.min((now-last)/1000
    const sy=swan.rotation.y,sn=Math.sin(sy),cs=Math.cos(sy);boy.position.set(x-.95*cs-.3*sn,swan.position.y+.62,z+.95*sn-.3*cs);girl.position.set(x+.95*cs-.3*sn,swan.position.y+.62,z-.95*sn-.3*cs);boy.rotation.y=girl.rotation.y=sy;sit(boy);sit(girl);gu.h.rotation.z=.3;gu.h.position.x=-.08;
    if(k>D-3.2)endAct();else if(Math.floor(k)%7===2&&rnd()<.04)hearts(3)}
   if(t==='prop'){if(!busy.yes){put(girl,0,0,-38.4,0);put(boy,0,-.35,-35.4,PI);if(rdy(boy)){kneel(boy);bu.AR.rotation.set(-1.9,0,-.1);bu.AL.rotation.set(-.4,0,.1)}if(rdy(girl)){gu.AL.rotation.x=gu.AR.rotation.x=-2.3;gu.h.rotation.x=.12}boy.updateMatrixWorld(true);bu.AR.userData.hand.getWorldPosition(ring.position);ring.position.y+=.13;ring.rotation.y=tt;
-    if(k>2&&!busy.shown){busy.shown=1;if(myRole==='girl')card('Will you marry me, '+NAMES[1]+'? 💍','Under the flower arch, among the rose petals…',0,'Yes! 💖','Yes, obviously 💍',()=>{yesNow();if(room)room.presence({ans:true})});else toast('Waiting for her answer… 💍')}
-    const pp=peer();if(pp&&pp.presence.ans===true)yesNow();if(!pp&&myRole==='boy'&&k>4)yesNow()}
+    if(k>2&&!busy.shown){busy.shown=1;if(myRole==='girl')card('Will you marry me, '+myName+'? 💍','Under the flower arch, among the rose petals…',0,'Yes ❤️','Absolutely yes 💖',(_value,choice)=>{if(room)room.presence({ans:true,answerChoice:choice});yesNow(choice)});else toast('Waiting for her answer… 💍')}
+    const pp=peer();if(pp&&pp.presence.ans===true)yesNow(pp.presence.answerChoice||1);if(!pp&&myRole==='boy'&&k>4)yesNow(1)}
    else{const e=busy.k-busy.ky;put(boy,0,0,-36.5,PI);bu.AL.rotation.x=bu.AR.rotation.x=-2.8;put(girl,0,Math.abs(Math.sin(e*5))*.2,-38.2,0);gu.AL.rotation.x=gu.AR.rotation.x=-2.9;if(e>8)endAct(1)}}
   if(busy&&busy.t!=='prop'&&busy.t!=='boat'&&busy.k>=busy.d)endAct();
   $('stop').style.display=busy&&busy.t!=='prop'&&owner?'block':'none'}
