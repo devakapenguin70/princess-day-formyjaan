@@ -402,7 +402,7 @@ const clientId=(crypto.randomUUID?crypto.randomUUID():('p'+Date.now()+Math.rando
 let sb=null,sbChannel=null,localPresence={role:null,roleSelected:false,displayName:myName},remotePeers=[],joinedAt=Date.now(),roomReady=false,positionSeq=0;
 function makeRoomId(){try{return 'pd-'+crypto.randomUUID().replace(/-/g,'').slice(0,20)}catch(e){return 'pd-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,12)}}
 const roomUrl=new URL(location.href),requestedRoom=roomUrl.searchParams.get('room');
-const ROOM_ID=requestedRoom&&/^[a-z0-9-]{8,64}$/i.test(requestedRoom)?requestedRoom:makeRoomId();
+const ROOM_ID=requestedRoom&&/^[a-z0-9-]{8,64}$/i.test(requestedRoom)?requestedRoom:'pd-our-private-world';
 if(!requestedRoom||requestedRoom!==ROOM_ID){roomUrl.searchParams.set('room',ROOM_ID);history.replaceState(null,'',roomUrl.pathname+roomUrl.search+roomUrl.hash)}
 async function shareRoom(){
  const url=new URL(location.href);url.searchParams.set('room',ROOM_ID);const link=url.href;
