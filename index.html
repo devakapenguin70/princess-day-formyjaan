@@ -400,29 +400,49 @@ const SB_URL='https://lxpngmquwpyhsvyeukid.supabase.co';
 const SB_KEY='sb_publishable_vspaMHJvc918VdTqQKcSuQ_IfI6oybS';
 const clientId=(crypto.randomUUID?crypto.randomUUID():('p'+Date.now()+Math.random().toString(36).slice(2)));
 let sb=null,sbChannel=null,localPresence={role:null,displayName:myName},remotePeers=[],joinedAt=Date.now(),roomReady=false;
+const ROOM_ID='princess-day-castle-world';
+let authorityTimer=null,authorityBusy=false;
 function applyNetworkRole(){
   if(started){document.body.classList.toggle('owner',owner);document.body.classList.toggle('guest',!owner)}
   $('status').textContent=owner?'🟢 You are hosting this room.':'🟢 Connected to the shared world.';refreshPrincessName();
 }
+function upsertRemotePeer(payload){
+  if(!payload||!payload.clientId||payload.clientId===clientId)return;
+  const i=remotePeers.findIndex(p=>p.presence.clientId===payload.clientId);
+  const item={isMe:false,kind:'viewer',presence:payload,seenAt:Date.now()};
+  if(i<0)remotePeers.push(item);else remotePeers[i]=item;
+}
 function rebuildRemotePeers(){
   if(!sbChannel)return;
   const state=sbChannel.presenceState();
-  const all=[];
-  Object.values(state).forEach(arr=>(arr||[]).forEach(v=>{if(v&&v.clientId)all.push(v)}));
-  const mine=all.find(v=>v.clientId===clientId);
-  remotePeers=all.filter(v=>v.clientId!==clientId).map(v=>({isMe:false,kind:'viewer',presence:v}));
-  if(mine){
-    const ordered=all.slice().sort((a,b)=>(a.joinedAt||0)-(b.joinedAt||0));
-    const nextOwner=ordered.length?ordered[0].clientId===clientId:true;
-    if(nextOwner!==owner){owner=nextOwner;applyNetworkRole();if(sbChannel)sbChannel.track({...localPresence,clientId,joinedAt,owner}).catch(e=>console.warn('Presence role refresh failed:',e))}
-  }
+  Object.values(state).forEach(arr=>(arr||[]).forEach(v=>upsertRemotePeer(v)));
+  // Presence sync is supplementary: never erase a live Broadcast-discovered peer.
+  const cutoff=Date.now()-25000;
+  remotePeers=remotePeers.filter(p=>p.seenAt>cutoff);
+}
+async function refreshRoomAuthority(){
+  if(!sb||!roomReady||authorityBusy)return;
+  authorityBusy=true;
+  try{
+    const {data,error}=await sb.rpc('claim_princess_room_host',{p_room_id:ROOM_ID,p_client_id:clientId});
+    if(error)throw error;
+    const lease=Array.isArray(data)?data[0]:data;
+    if(!lease||!lease.host_id)throw new Error('Room host lease response was empty');
+    const nextOwner=lease.host_id===clientId;
+    if(owner!==nextOwner){owner=nextOwner;applyNetworkRole()}
+    // Heartbeat all peers even when nobody is moving; this also refreshes the roster.
+    room.presence({});
+  }catch(e){
+    console.warn('Room authority check failed; admin controls disabled until verified:',e);
+    if(owner){owner=false;applyNetworkRole()}
+  }finally{authorityBusy=false}
 }
 room={
   presence(patch){
     const changed=patch||{};Object.assign(localPresence,changed);
     if(!sbChannel||!roomReady)return;
     const persistent=['role','displayName','musicUrl','musicName','musicEvent','musicStartedAt','musicTime','musicPlaying','dayMode','dayEvent','wheelMode','wheelEvent','fxEvent','act','actStartedAt','sg','ans','answerChoice'];
-    if(Object.keys(changed).some(k=>persistent.includes(k)))sbChannel.track({...localPresence,clientId,joinedAt,owner}).catch(e=>console.warn('Presence update failed; broadcast fallback remains active:',e));
+    if(Object.keys(changed).some(k=>persistent.includes(k)))sbChannel.track({...localPresence,clientId,joinedAt,owner}).catch(e=>console.warn('Presence update failed; Broadcast roster remains active:',e));
     sbChannel.send({type:'broadcast',event:'state',payload:{...localPresence,clientId,joinedAt,owner}}).catch(()=>{});
   },
   peers(){return remotePeers}
@@ -431,23 +451,10 @@ room={
   try{
     if(!window.supabase||!window.supabase.createClient)throw new Error('Supabase library did not load');
     sb=window.supabase.createClient(SB_URL,SB_KEY,{realtime:{params:{eventsPerSecond:20}}});
-    sbChannel=sb.channel('princess-day-castle-world',{config:{presence:{key:clientId},broadcast:{self:false,ack:false}}});
+    sbChannel=sb.channel(ROOM_ID,{config:{presence:{key:clientId},broadcast:{self:false,ack:false}}});
     sbChannel.on('broadcast',{event:'state'},({payload})=>{
       if(!payload||payload.clientId===clientId)return;
-      const i=remotePeers.findIndex(p=>p.presence.clientId===payload.clientId);
-
-      const item={isMe:false,kind:'viewer',presence:payload};
-
-      if(i<0)remotePeers.push(item);else remotePeers[i]=item;
-
-      // Elect the earliest connected client even when Presence tracking is rate-limited.
-
-      const candidates=[{clientId,joinedAt},...remotePeers.map(p=>({clientId:p.presence.clientId,joinedAt:p.presence.joinedAt||Date.now()}))].sort((a,b)=>(a.joinedAt||0)-(b.joinedAt||0));
-
-      const nextOwner=candidates[0].clientId===clientId;
-
-      if(nextOwner!==owner){owner=nextOwner;applyNetworkRole()}
-
+      upsertRemotePeer(payload);
       refreshPrincessName();
     });
     sbChannel.on('presence',{event:'sync'},()=>{rebuildRemotePeers();refreshPrincessName()});
@@ -455,23 +462,22 @@ room={
     sbChannel.on('presence',{event:'leave'},()=>rebuildRemotePeers());
     sbChannel.subscribe(async status=>{
       if(status==='SUBSCRIBED'){
-        const before=sbChannel.presenceState();
-        const others=[];Object.values(before).forEach(arr=>(arr||[]).forEach(v=>{if(v&&v.clientId&&v.clientId!==clientId)others.push(v)}));
-        owner=others.length===0;joinedAt=Date.now();
-        // A Presence rate-limit rejection must not prevent Broadcast from becoming usable.
-
-        try{await sbChannel.track({...localPresence,clientId,joinedAt,owner})}
-
-        catch(e){console.warn('Initial Presence track failed; continuing with Broadcast fallback:',e)}
-
-        roomReady=true;rebuildRemotePeers();applyNetworkRole();
-        room.presence({displayName:myName});
-        if(started&&owner)playSceneMusic('explore',true);
+        joinedAt=Date.now();
+        try{await sbChannel.track({...localPresence,clientId,joinedAt,owner:false})}
+        catch(e){console.warn('Initial Presence track failed; Broadcast roster remains active:',e)}
+        roomReady=true;owner=false;rebuildRemotePeers();applyNetworkRole();
+        room.presence({displayName:myName,role:myRole});
+        await refreshRoomAuthority();
+        if(authorityTimer)clearInterval(authorityTimer);
+        authorityTimer=setInterval(refreshRoomAuthority,5000);
       }else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED'){
-        roomReady=false;$('status').textContent='⚠️ Multiplayer connection issue — check your Supabase project settings and internet.';
+        roomReady=false;
+        if(authorityTimer){clearInterval(authorityTimer);authorityTimer=null}
+        if(owner){owner=false;applyNetworkRole()}
+        $('status').textContent='⚠️ Multiplayer connection issue — reconnecting…';
       }
     });
-  }catch(e){console.error('Supabase multiplayer:',e);room=null;$('status').textContent='⚠️ Multiplayer could not connect. Check the Supabase URL/key and Realtime status.';}
+  }catch(e){console.error('Supabase multiplayer:',e);room=null;owner=false;$('status').textContent='⚠️ Multiplayer could not connect. Check your Supabase URL/key and Realtime status.';}
 })();
 myRole='boy';me=boy;ot=girl;boy.visible=true;girl.visible=false;me.add(mark);$('bDay').textContent='☀️';$('bWheel').textContent='🎡';
 let qi=0;const showQ=()=>{const e=$('iq');e.style.opacity=0;setTimeout(()=>{e.textContent=PQ[qi++%PQ.length];e.style.opacity=1},500)};showQ();setInterval(()=>{if(!started)showQ()},5200);
